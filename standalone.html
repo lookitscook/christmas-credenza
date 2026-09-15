@@ -1166,7 +1166,7 @@ SOFTWARE.
     </label>
   </div>
   <div class="scene-workspace">
-  <div class="scene-stage" role="img" aria-label="Interactive three-dimensional Christmas scene: a mahogany credenza, silver and wood vintage television, warm table lamp, a blue Mallard model train on an oval track around the lamp and television, and a fir tree decorated only with colored lights. Drag to orbit and pinch or scroll to zoom.">
+  <div class="scene-stage" role="img" aria-label="Interactive three-dimensional Christmas scene: a mahogany credenza, silver and wood vintage television, warm table lamp, a blue Mallard model train on an oval track around the lamp and television, and a fir tree decorated with colored lights and a golden five-pointed star on top. Drag to orbit and pinch or scroll to zoom.">
     <div class="scene-message" role="status">Building the scene…</div>
   </div>
   <section class="hatch-settings" data-hatch-settings aria-labelledby="hatch-heading" hidden>
@@ -1209,8 +1209,8 @@ try {
   renderer.toneMappingExposure = 1.25;
   stage.appendChild(renderer.domElement);
   const camera = new THREE.PerspectiveCamera(36,1.5,0.02,25);
-  const target = new THREE.Vector3(0.12,1.28,0);
-  let yaw=-0.055, pitch=0.27, distance=2.18;
+  const target = new THREE.Vector3(0.32,1.42,0);
+  let yaw=-0.055, pitch=0.27, distance=4.2;
   function placeCamera(){camera.position.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);camera.lookAt(target);}
   placeCamera();
 
@@ -1445,6 +1445,21 @@ try {
     if(i%17===0){const pl=new THREE.PointLight(bulbColors[ci],.16,.8,2);pl.position.copy(center);tree.add(pl);}
   }
 
+  // A five-pointed gold topper with raised centers and crisp triangular facets.
+  const starGold=new THREE.MeshPhysicalMaterial({color:'#e8b641',metalness:.82,roughness:.26,clearcoat:.6,clearcoatRoughness:.2,emissive:'#a45608',emissiveIntensity:.12,flatShading:true});
+  const starOutline=[];
+  for(let i=0;i<10;i++){const a=Math.PI/2+i*Math.PI/5,r=i%2?.075:.17;starOutline.push([Math.cos(a)*r,Math.sin(a)*r]);}
+  const starVertices=[];
+  for(let i=0;i<10;i++){
+    const a=starOutline[i],b=starOutline[(i+1)%10];
+    starVertices.push(0,0,.045,...a,.008,...b,.008); // Front facets.
+    starVertices.push(0,0,-.045,...b,-.008,...a,-.008); // Back facets.
+    starVertices.push(...a,.008,...a,-.008,...b,.008,...b,.008,...a,-.008,...b,-.008); // Rim.
+  }
+  const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.Float32BufferAttribute(starVertices,3));starGeometry.computeVertexNormals();
+  const star=mesh(starGeometry,starGold,tree);star.name='Golden five-pointed tree star';star.position.set(0,2.43,0);star.rotation.y=-.18;
+  cylinder(.010,.014,.15,0,2.29,0,starGold,tree,12);
+
   // Warm soft light and restrained room fill retain the nighttime palette.
   scene.add(new THREE.HemisphereLight('#d9c5a8','#6b3920',.65));
   const key=new THREE.DirectionalLight('#ffe1ae',1.15);key.position.set(-1.5,3.4,3.3);scene.add(key);key.castShadow=true;
@@ -1456,7 +1471,7 @@ try {
   const cubeCam=new THREE.CubeCamera(.04,8,capture);cubeCam.position.set(.12,1.34,.38);scene.add(cubeCam);
   glass.visible=false;cubeCam.update(renderer,scene);glass.visible=true;
   const pmrem=new THREE.PMREMGenerator(renderer);const env=pmrem.fromCubemap(capture.texture);
-  glassMat.envMap=env.texture;wood.envMap=env.texture;wood.envMapIntensity=.14;ceramic.envMap=env.texture;ceramic.envMapIntensity=.20;silver.envMap=env.texture;silver.envMapIntensity=.36;trainBlue.envMap=env.texture;trainBlue.envMapIntensity=.25;pmrem.dispose();capture.dispose();scene.remove(cubeCam);
+  glassMat.envMap=env.texture;wood.envMap=env.texture;wood.envMapIntensity=.14;ceramic.envMap=env.texture;ceramic.envMapIntensity=.20;silver.envMap=env.texture;silver.envMapIntensity=.36;trainBlue.envMap=env.texture;trainBlue.envMapIntensity=.25;starGold.envMap=env.texture;starGold.envMapIntensity=.75;pmrem.dispose();capture.dispose();scene.remove(cubeCam);
 
   let requested=false;
   const postProcessing=createPostProcessing(renderer,root,invalidate);

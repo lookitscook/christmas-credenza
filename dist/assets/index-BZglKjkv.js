@@ -122,8 +122,8 @@ try {
 	renderer.toneMappingExposure = 1.25;
 	stage.appendChild(renderer.domElement);
 	const camera = new THREE.PerspectiveCamera(36, 1.5, .02, 25);
-	const target = new THREE.Vector3(.12, 1.28, 0);
-	let yaw = -.055, pitch = .27, distance = 2.18;
+	const target = new THREE.Vector3(.32, 1.42, 0);
+	let yaw = -.055, pitch = .27, distance = 4.2;
 	function placeCamera() {
 		camera.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * distance, target.y + Math.sin(pitch) * distance, target.z + Math.cos(yaw) * Math.cos(pitch) * distance);
 		camera.lookAt(target);
@@ -908,6 +908,36 @@ try {
 			tree.add(pl);
 		}
 	}
+	const starGold = new THREE.MeshPhysicalMaterial({
+		color: "#e8b641",
+		metalness: .82,
+		roughness: .26,
+		clearcoat: .6,
+		clearcoatRoughness: .2,
+		emissive: "#a45608",
+		emissiveIntensity: .12,
+		flatShading: true
+	});
+	const starOutline = [];
+	for (let i = 0; i < 10; i++) {
+		const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .075 : .17;
+		starOutline.push([Math.cos(a) * r, Math.sin(a) * r]);
+	}
+	const starVertices = [];
+	for (let i = 0; i < 10; i++) {
+		const a = starOutline[i], b = starOutline[(i + 1) % 10];
+		starVertices.push(0, 0, .045, ...a, .008, ...b, .008);
+		starVertices.push(0, 0, -.045, ...b, -.008, ...a, -.008);
+		starVertices.push(...a, .008, ...a, -.008, ...b, .008, ...b, .008, ...a, -.008, ...b, -.008);
+	}
+	const starGeometry = new THREE.BufferGeometry();
+	starGeometry.setAttribute("position", new THREE.Float32BufferAttribute(starVertices, 3));
+	starGeometry.computeVertexNormals();
+	const star = mesh(starGeometry, starGold, tree);
+	star.name = "Golden five-pointed tree star";
+	star.position.set(0, 2.43, 0);
+	star.rotation.y = -.18;
+	cylinder(.01, .014, .15, 0, 2.29, 0, starGold, tree, 12);
 	scene.add(new THREE.HemisphereLight("#d9c5a8", "#6b3920", .65));
 	const key = new THREE.DirectionalLight("#ffe1ae", 1.15);
 	key.position.set(-1.5, 3.4, 3.3);
@@ -944,6 +974,8 @@ try {
 	silver.envMapIntensity = .36;
 	trainBlue.envMap = env.texture;
 	trainBlue.envMapIntensity = .25;
+	starGold.envMap = env.texture;
+	starGold.envMapIntensity = .75;
 	pmrem.dispose();
 	capture.dispose();
 	scene.remove(cubeCam);
