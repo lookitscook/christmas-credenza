@@ -1,0 +1,35 @@
+{
+  "sourceConversation": "https://chatgpt.com/c/6aa87929-1c60-83e9-bdb2-417eb72f834e",
+  "sourcePost": "Tightened the strand against the branches, keeping uneven wrapping and varied bulb angles.",
+  "verifiedIframe": "https://app-block-d05740e7b97ca834c5e652e35418d1e2.web-sandbox.oaiusercontent.com?",
+  "extractionMethod": "Read-only client-side DOM inspection of the nested iframe#root, matched to the parent post text.",
+  "sceneRootId": "christmas-credenza-tight-3d",
+  "originalSceneUtf8Bytes": 28447,
+  "originalSceneSha256": "92bf8c9ed87d9b514622c04596322db886673f776dd36f19bb2ea8346d805675",
+  "packagedSceneSha256": "8ccdfe3c2c81ed30e64c6a08acee30e5d0b4f3b75f5ca681c9b71360db4185f5",
+  "threeVersion": "0.160.1",
+  "threeSource": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+  "threeSha256": "76dea8151bc9352aef3528b4262e249b2604f62543828328db978d060d61a495",
+  "sceneChanges": [
+    {
+      "from": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "to": "../vendor/three.module.js"
+    }
+  ],
+  "wrapperChanges": [
+    "Removed the already-rendered canvas; original code creates it again.",
+    "Reset the loading message and scene ready state.",
+    "Stored generated inline styles as local CSS and bundled the original sandbox stylesheet.",
+    "Omitted unused ChatGPT host, Tailwind runtime, tooltip, tab and icon helper scripts.",
+    "Enabled standalone scrolling; kept original 3:2 scene dimensions, controls and theme."
+  ],
+  "notes": "Original module text is preserved without edits in original/scene.js. The original HTML is a serialized live DOM, not a claim to the pre-render server file bytes.",
+  "verification": {
+    "sourceIdentity": "Exact equality after reversing the one import replacement.",
+    "standaloneIdentity": "Exact scene module and Three.js byte equality confirmed.",
+    "browser": "Source app, HTTP-served standalone, and dist build rendered in Chrome; no console errors.",
+    "controls": "Run/Pause toggled aria-pressed and train-render pixels changed.",
+    "build": "Vite 8.3.0 production build passed.",
+    "fileUrlTest": "Not performed: browser automation URL policy blocks file:// navigation."
+  }
+}

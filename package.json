@@ -1,0 +1,20 @@
+{
+  "name": "christmas-credenza-exact",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Original tight-lights scene extracted from its live ChatGPT app iframe.",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "devDependencies": {
+    "@rolldown/binding-wasm32-wasi": "1.2.8",
+    "vite": "8.3.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
