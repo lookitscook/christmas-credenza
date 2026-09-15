@@ -8,7 +8,7 @@ The scene is `christmas-credenza-tight-3d`. Its 28,447-byte JavaScript module wa
 
 ## Run
 
-**Single file:** open `standalone.html` in a modern browser. It embeds all scene code, Three.js, and CSS. It needs no downloads, installation, account, or server. WebGL must be available.
+**Single file:** open `standalone.html` in a modern browser. It embeds all scene code, Three.js, CSS, paper textures, and the TV video. It needs no downloads, installation, account, or server. WebGL must be available.
 
 **Local server:** with Node.js installed, open a terminal in this folder and run:
 
@@ -22,6 +22,23 @@ Drag to orbit, scroll or pinch to zoom, and use **Run train / Pause train**. Rel
 
 The tree is topped with a faceted golden five-pointed star. The starting view is
 framed to include the whole tree and its topper; scroll or pinch to see details.
+
+## Television video
+
+The television automatically plays `content/11543712-hd_1920_1080_30fps.mp4` on
+repeat, with audio muted and volume set to zero. Playback continues independently
+of the train and works with Cross-hatch II enabled. Footage scales to fill the
+curved CRT glass, preserving its proportions and cropping the edges as needed.
+
+To choose a different video, put an MP4, WebM, or OGV file in `content/` and update
+`TV_VIDEO_URL` at the top of `src/scene.js`. The file must use a codec supported by
+your browser. Reload the development page, or run `npm run build` for both packaged
+editions. The source video folder is gitignored, so supply that file in a fresh checkout.
+
+The production build includes the selected video as a local asset. The single-file
+build embeds it, increasing that HTML file's size (about 36 MB with the current clip).
+If browser policy blocks muted autoplay, clicking the scene starts playback.
+If the video cannot load, the original screen remains visible with a status message.
 
 ## Cross-hatch post-processing
 
@@ -76,6 +93,7 @@ A verified production build is already included in `dist/`. Upload the contents 
 - `standalone.html` — complete single-file app with embedded Three.js and styles.
 - `index.html`, `src/`, `vendor/` — readable app with local dependencies.
 - `src/cross-hatch.js`, `src/post-processing.js` — optional effect and configuration controls.
+- `src/tv-video.js` — silent looping video, CRT material, and frame updates.
 - `scripts/build-standalone.mjs` — reproducible offline single-file packaging.
 - `original/scene.js` — unmodified module text recovered from the requested post.
 - `original/rendered-app.html` — archived live iframe DOM, including the original host wrapper. This is a source record and retains its original external URLs; use the runnable files above.
