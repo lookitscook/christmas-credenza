@@ -209,7 +209,7 @@ export class CrossHatchEffect {
       // Mesh normals don't apply to glow sprites or tree-needle line segments.
       // They still contribute their real colors in the first pass.
       scene.traverse(object => {
-        if (object.visible && (object.isSprite || object.isLine || object.isPoints)) {
+        if (object.visible && (object.isSprite || object.isLine || object.isPoints || object.userData.excludeFromNormals)) {
           hidden.push(object);
           object.visible = false;
         }

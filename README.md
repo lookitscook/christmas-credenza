@@ -29,6 +29,26 @@ The television automatically plays `content/11543712-hd_1920_1080_30fps.mp4` on
 repeat, with audio muted and volume set to zero. Playback continues independently
 of the train and works with Cross-hatch II enabled. Footage scales to fill the
 curved CRT glass, preserving its proportions and cropping the edges as needed.
+Each full video frame is first downscaled to at most **256 pixels on its longest
+side** (256 × 144 for the bundled clip), then cropped to cover the screen. Smooth
+texture filtering gives the enlarged picture a softer CRT look. Smaller source
+videos keep their original resolution. Change `MAX_VIDEO_TEXTURE_SIZE` in
+`src/tv-video.js` to adjust this limit.
+
+Open **CRT settings** in the toolbar to adjust the TV picture. The **TV vignette**
+slider adjusts edge and corner darkening live, from **0%**
+(no vignette) to **100%** (the strongest effect). It defaults to a gentler **50%**
+and retains your setting when video is toggled off and back on. The slider is
+disabled while the video is off. The screen keeps its reflective clearcoat glass.
+A soft rectangular
+glow surrounds the screen, masked by the glass so it only appears outside the
+screen edge, and a rectangular area light illuminates nearby objects.
+The glow and light follow the average color/brightness of the displayed footage,
+sampled at most ten times per second. Reflections use the captured room environment.
+
+Click **TV video: On** in the toolbar to turn the content off: playback pauses,
+the glow and screen light switch off, and the original screen texture and UV mapping
+return. Click **TV video: Off** to resume silent playback from the paused position.
 
 To choose a different video, put an MP4, WebM, or OGV file in `content/` and update
 `TV_VIDEO_URL` at the top of `src/scene.js`. The file must use a codec supported by
@@ -67,6 +87,43 @@ Original paper textures are bundled locally and embedded in `standalone.html`.
 Enabling the effect adds a color pass, a mesh-normal pass, and a full-screen composite;
 animation may run slower on less powerful graphics hardware. Normal mode bypasses these passes.
 
+## CRT shader and settings panels
+
+The TV uses an adaptation of [gingerbeardman's Serenity Shader](https://github.com/gingerbeardman/webgl-crt-shader/).
+It processes only the TV picture and works together with the whole-scene Cross-hatch
+effect. The 256 px source limit, silent looping playback, glass reflections, and
+rectangular TV light are retained.
+
+Use **CRT settings** and **Cross-hatch settings** to open or close their panels.
+Each panel also has a **Close** button. Closing a panel keeps its effect and values;
+settings last until the page reloads. Panels sit beside the scene on desktop and
+below it on small screens. Opening a panel brings it into view.
+
+| CRT control | Range | Default |
+| --- | --- | --- |
+| Scanline strength | 0–100% | 15% |
+| Scanline count | 50–1200 | 144 |
+| Adaptive strength | 0–100% | 50% |
+| Scanline offset | 0–1 | 0 |
+| Brightness, contrast | 0.6–1.8 | 1.1, 1.05 |
+| Saturation | 0–2 | 1.1 |
+| RGB shift | 0–1 | 0 |
+| TV vignette | 0–100% | 50% |
+| Curvature | 0–0.5 | 0.06 |
+| Flicker | 0–15% | 1% |
+| Bloom strength | 0–1.5 | 0.42 |
+| Bloom threshold | 0–1 | 0 |
+
+**Enable CRT picture effect** bypasses or restores the picture filters without
+stopping the video. **Reset CRT** restores the table's defaults and enables the
+picture effect. Turning **TV video** off disables these controls, pauses playback,
+restores the original texture, and switches off the light and bloom.
+
+The reference's internal bloom is adapted to the existing external halo so bloom
+stays outside the glass. The existing adjustable vignette is used once. Scanlines
+fade to their average when too small to display cleanly, reducing moire during
+camera movement. See `vendor/crt/README.md` and `LICENSE.txt` for source attribution.
+
 ## Optional Vite workflow
 
 Use Node.js 22.12 or newer. Installation requires internet access; the app itself does not.
@@ -93,7 +150,8 @@ A verified production build is already included in `dist/`. Upload the contents 
 - `standalone.html` — complete single-file app with embedded Three.js and styles.
 - `index.html`, `src/`, `vendor/` — readable app with local dependencies.
 - `src/cross-hatch.js`, `src/post-processing.js` — optional effect and configuration controls.
-- `src/tv-video.js` — silent looping video, CRT material, and frame updates.
+- `src/tv-video.js`, `src/crt-screen.js` — silent looping video, reflective CRT glass, glow, area light, and on/off control.
+- `src/crt-shader.js`, `src/crt-controls.js`, `src/effect-panels.js` — CRT picture effects, live controls, and reopenable settings panels.
 - `scripts/build-standalone.mjs` — reproducible offline single-file packaging.
 - `original/scene.js` — unmodified module text recovered from the requested post.
 - `original/rendered-app.html` — archived live iframe DOM, including the original host wrapper. This is a source record and retains its original external URLs; use the runnable files above.
@@ -109,10 +167,11 @@ The page wrapper uses the captured styles and a local copy of the original sandb
 
 `original/rendered-app.html` is a serialization of the live DOM, not a claim to the pre-render server file bytes. The scene module itself is preserved exactly as read from its script element.
 
-## Cross-hatch verification
+## Effect verification
 
-- `npm test`: four regression tests cover render-state restoration (including errors),
-  resizing, parameter limits, and asynchronous paper loading/disposal.
+- `npm test`: regression tests cover render-state restoration (including errors),
+  resizing, parameter limits, asynchronous paper loading/disposal, and the TV light,
+  bloom, original-screen restoration, CRT parameter limits, and retained shader settings.
 - `npm run build`: Vite production build and offline single-file packaging pass.
 - Chrome: effect toggling, all slider limits, ink color, four paper choices, reset,
   retained settings, and train animation verified; production and single-file
@@ -133,6 +192,9 @@ The browser automation policy prevents opening `file://` URLs, so direct double-
 ## Third-party components
 
 Three.js 0.160.1 is bundled under MIT; see `vendor/THREE-LICENSE.txt`. Captured Tailwind CSS 3.4.17 styles are covered by `vendor/TAILWIND-LICENSE.txt`. Vite's license is included in `vendor/VITE-LICENSE.md`. No external fonts, images, or 3D models are required.
+
+Serenity Shader by Matt Sephton (@gingerbeardman) is adapted under MIT; see
+`vendor/crt/LICENSE.txt`. Its license and attribution are included in both builds.
 
 Cross-hatch II and its paper assets come from spite/sketch under MIT; see
 `vendor/cross-hatch/LICENSE.txt` and `vendor/cross-hatch/README.md` for attribution

@@ -1,8 +1,7 @@
 import { CrossHatchEffect, HATCH_DEFAULTS, HATCH_SLIDERS, PAPER_TEXTURES } from './cross-hatch.js';
 
-export function createPostProcessing(renderer, root, invalidate) {
+export function createPostProcessing(renderer, root, invalidate, panels) {
   const select = root.querySelector('[data-action="effect"]');
-  const settings = root.querySelector('[data-hatch-settings]');
   const grid = root.querySelector('[data-hatch-sliders]');
   const paper = root.querySelector('[data-hatch-paper]');
   const ink = root.querySelector('[data-hatch-ink]');
@@ -46,6 +45,7 @@ export function createPostProcessing(renderer, root, invalidate) {
   ink.value = params.inkColor;
 
   async function loadPaper() {
+    if (!effect) return;
     const request = ++paperRequest;
     status.textContent = 'Loading paper texture…';
     try {
@@ -64,7 +64,7 @@ export function createPostProcessing(renderer, root, invalidate) {
 
   select.addEventListener('change', () => {
     active = select.value === 'cross-hatch';
-    settings.hidden = !active;
+    if (active) panels.setOpen('hatch', true);
     if (active && !effect) {
       effect = new CrossHatchEffect(renderer);
       effect.setSize(width, height);

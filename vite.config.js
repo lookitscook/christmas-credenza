@@ -13,6 +13,8 @@ export default defineConfig({
         ['vendor/TAILWIND-LICENSE.txt', 'TAILWIND-LICENSE.txt'],
         ['vendor/cross-hatch/LICENSE.txt', 'CROSS-HATCH-LICENSE.txt'],
         ['vendor/cross-hatch/README.md', 'CROSS-HATCH-README.md'],
+        ['vendor/crt/LICENSE.txt', 'CRT-LICENSE.txt'],
+        ['vendor/crt/README.md', 'CRT-README.md'],
       ]) await copyFile(source, `dist/licenses/${name}`);
     },
   }],

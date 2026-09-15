@@ -7,6 +7,7 @@ try {
   const THREE = await import('../vendor/three.module.js');
   const { createPostProcessing } = await import('./post-processing.js');
   const { createTVVideo } = await import('./tv-video.js');
+  const { createEffectPanels } = await import('./effect-panels.js');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#3b2619');
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
@@ -97,8 +98,6 @@ try {
   const glassMat=new THREE.MeshPhysicalMaterial({map:glassMap,color:'#c7ccbf',roughness:.17,metalness:.13,clearcoat:1,clearcoatRoughness:.08,envMapIntensity:.24});
   const sg=new THREE.PlaneGeometry(.567,.475,48,40);const pos=sg.attributes.position,uv=sg.attributes.uv;
   for(let i=0;i<pos.count;i++){const u=(uv.getX(i)-.5)*2,v=(uv.getY(i)-.5)*2;const sx=Math.sign(u)*Math.pow(Math.abs(u),.7),sy=Math.sign(v)*Math.pow(Math.abs(v),.7);pos.setXYZ(i,sx*.2835*(1-.045*Math.pow(Math.abs(v),8)),sy*.2375*(1-.055*Math.pow(Math.abs(u),8)),.014*(1-u*u)*(1-v*v));}
-  // Map footage in screen space while retaining the convex, rounded CRT geometry.
-  for(let i=0;i<pos.count;i++)uv.setXY(i,pos.getX(i)/.567+.5,pos.getY(i)/.475+.5);
   sg.computeVertexNormals();const glass=mesh(sg,glassMat,tv);glass.position.set(-.083,.33,.268);
   const grilleMap=texture((c,w,h)=>{c.fillStyle='#413329';c.fillRect(0,0,w,h);for(let x=4;x<w;x+=9)for(let y=4;y<h;y+=9){c.fillStyle='#161411';c.beginPath();c.arc(x+(y%18===4?0:3),y,2.3,0,Math.PI*2);c.fill();c.fillStyle='rgba(170,143,100,.20)';c.fillRect(x-1,y+2,3,1);}},128,384);
   const grille=new THREE.MeshStandardMaterial({map:grilleMap,roughness:.8});
@@ -285,7 +284,8 @@ try {
   glassMat.envMap=env.texture;wood.envMap=env.texture;wood.envMapIntensity=.14;ceramic.envMap=env.texture;ceramic.envMapIntensity=.20;silver.envMap=env.texture;silver.envMapIntensity=.36;trainBlue.envMap=env.texture;trainBlue.envMapIntensity=.25;starGold.envMap=env.texture;starGold.envMapIntensity=.75;pmrem.dispose();capture.dispose();scene.remove(cubeCam);
 
   let requested=false;
-  const postProcessing=createPostProcessing(renderer,root,invalidate);
+  const panels=createEffectPanels(root);
+  const postProcessing=createPostProcessing(renderer,root,invalidate,panels);
   const drawingSize=new THREE.Vector2();
   function render(){requested=false;postProcessing.render(scene,camera);}
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
@@ -301,7 +301,7 @@ try {
   function animate(t){if(!runTrain || !root.isConnected){prevTime=0;return;}const dt=prevTime?Math.min((t-prevTime)/1000,.05):0;prevTime=t;trainS+=dt*.11;placeTrain();for(const w of wheels)w.hub.rotation.z+=dt*.11/w.r;invalidate();requestAnimationFrame(animate);}
   const trainButton=root.querySelector('[data-action="train"]');
   trainButton.addEventListener('click',()=>{runTrain=!runTrain;trainButton.textContent=runTrain?'Pause train':'Run train';trainButton.setAttribute('aria-pressed',String(runTrain));if(runTrain)requestAnimationFrame(animate);});
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();runTrain=false;tvVideo.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();runTrain=false;tvVideo.dispose();panels.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';

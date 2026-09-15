@@ -22,14 +22,16 @@ function fixture() {
   const line = new THREE.LineSegments();
   const invisible = new THREE.Sprite();
   invisible.visible = false;
-  scene.add(sprite, line, invisible);
+  const glow = new THREE.Mesh();
+  glow.userData.excludeFromNormals = true;
+  scene.add(sprite, line, invisible, glow);
   const effect = new CrossHatchEffect(renderer);
-  return { renderer, scene, effect, sprite, line, invisible, originalTarget };
+  return { renderer, scene, effect, sprite, line, invisible, glow, originalTarget };
 }
 
 for (const failNormalPass of [false, true]) {
   test(`render restores scene and renderer state${failNormalPass ? ' after an error' : ''}`, () => {
-    const { renderer, scene, effect, sprite, line, invisible, originalTarget } = fixture();
+    const { renderer, scene, effect, sprite, line, invisible, glow, originalTarget } = fixture();
     const background = scene.background;
     const material = scene.overrideMaterial;
     let passes = 0;
@@ -40,11 +42,13 @@ for (const failNormalPass of [false, true]) {
         assert.equal(renderer.target, effect.colorTarget);
         assert.equal(sprite.visible, true);
         assert.equal(line.visible, true);
+        assert.equal(glow.visible, true);
       } else if (passes === 2) {
         assert.equal(renderer.target, effect.normalTarget);
         assert.equal(scene.overrideMaterial, effect.normalMaterial);
         assert.equal(sprite.visible, false);
         assert.equal(line.visible, false);
+        assert.equal(glow.visible, false);
         assert.equal(renderer.shadowMap.autoUpdate, false);
         if (failNormalPass) throw new Error('Normal pass failed');
       } else {
@@ -61,6 +65,7 @@ for (const failNormalPass of [false, true]) {
     assert.equal(sprite.visible, true);
     assert.equal(line.visible, true);
     assert.equal(invisible.visible, false);
+    assert.equal(glow.visible, true);
     assert.deepEqual(renderer.shadowMap, { autoUpdate: true, needsUpdate: true });
     effect.dispose();
   });
