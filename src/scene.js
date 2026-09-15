@@ -4,6 +4,7 @@ const stage = root.querySelector('.scene-stage');
 const message = root.querySelector('.scene-message');
 try {
   const THREE = await import('../vendor/three.module.js');
+  const { createPostProcessing } = await import('./post-processing.js');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#3b2619');
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
@@ -265,9 +266,11 @@ try {
   glassMat.envMap=env.texture;wood.envMap=env.texture;wood.envMapIntensity=.14;ceramic.envMap=env.texture;ceramic.envMapIntensity=.20;silver.envMap=env.texture;silver.envMapIntensity=.36;trainBlue.envMap=env.texture;trainBlue.envMapIntensity=.25;pmrem.dispose();capture.dispose();scene.remove(cubeCam);
 
   let requested=false;
-  function render(){requested=false;renderer.render(scene,camera);}
+  const postProcessing=createPostProcessing(renderer,root,invalidate);
+  const drawingSize=new THREE.Vector2();
+  function render(){requested=false;postProcessing.render(scene,camera);}
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
-  function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();invalidate();}
+  function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.getDrawingBufferSize(drawingSize);postProcessing.setSize(drawingSize.x,drawingSize.y);camera.aspect=w/h;camera.updateProjectionMatrix();invalidate();}
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);resize();
   const pointers=new Map();let previousGap=0;
   renderer.domElement.addEventListener('pointerdown',e=>{pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});renderer.domElement.setPointerCapture(e.pointerId);previousGap=0;});
@@ -281,6 +284,6 @@ try {
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();runTrain=false;message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';
 } catch(error) {
-  message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and access to the Three.js CDN.';
+  message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';
   console.error(error);
 }

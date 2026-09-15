@@ -1,3 +1,4 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./three.module-B6P4w-Uq.js","./three.module-BlVsInPO.js","./post-processing-BRe5Dhox.js"])))=>i.map(i=>d[i]);
 //#region \0vite/modulepreload-polyfill.js
 (function polyfill() {
 	const relList = document.createElement("link").relList;
@@ -101,7 +102,11 @@ var root = document.getElementById("christmas-credenza-tight-3d");
 var stage = root.querySelector(".scene-stage");
 var message = root.querySelector(".scene-message");
 try {
-	const THREE = await __vitePreload(() => import("./three.module-CKoFlWJe.js"), [], import.meta.url);
+	const THREE = await __vitePreload(() => import("./three.module-B6P4w-Uq.js"), __vite__mapDeps([0,1]), import.meta.url);
+	const { createPostProcessing } = await __vitePreload(async () => {
+		const { createPostProcessing } = await import("./post-processing-BRe5Dhox.js");
+		return { createPostProcessing };
+	}, __vite__mapDeps([2,1]), import.meta.url);
 	const scene = new THREE.Scene();
 	scene.background = new THREE.Color("#3b2619");
 	const renderer = new THREE.WebGLRenderer({
@@ -943,9 +948,11 @@ try {
 	capture.dispose();
 	scene.remove(cubeCam);
 	let requested = false;
+	const postProcessing = createPostProcessing(renderer, root, invalidate);
+	const drawingSize = new THREE.Vector2();
 	function render() {
 		requested = false;
-		renderer.render(scene, camera);
+		postProcessing.render(scene, camera);
 	}
 	function invalidate() {
 		if (!requested) {
@@ -955,7 +962,10 @@ try {
 	}
 	function resize() {
 		const w = stage.clientWidth, h = stage.clientHeight;
+		if (!w || !h) return;
 		renderer.setSize(w, h, false);
+		renderer.getDrawingBufferSize(drawingSize);
+		postProcessing.setSize(drawingSize.x, drawingSize.y);
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
 		invalidate();
@@ -1034,7 +1044,7 @@ try {
 	root.dataset.ready = "true";
 } catch (error) {
 	message.hidden = false;
-	message.textContent = "The 3D scene could not start. It needs WebGL and access to the Three.js CDN.";
+	message.textContent = "The 3D scene could not start. It needs WebGL and the bundled app files.";
 	console.error(error);
 }
 //#endregion
