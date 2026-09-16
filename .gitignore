@@ -1,3 +1,4 @@
 node_modules/
-content/
+content/*
+!content/11543712-256px.mp4
 dist/

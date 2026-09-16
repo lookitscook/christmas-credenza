@@ -55,12 +55,13 @@ not the bundled video or textures.
 
 ## Television video
 
-The television automatically plays `content/11543712-hd_1920_1080_30fps.mp4` on
+The television automatically plays `content/11543712-256px.mp4` on
 repeat, with audio muted and volume set to zero. Playback continues independently
 of the train and works with Cross-hatch II enabled. Footage scales to fill the
 curved CRT glass, preserving its proportions and cropping the edges as needed.
-Each full video frame is first downscaled to at most **256 pixels on its longest
-side** (256 × 144 for the bundled clip), then cropped to cover the screen. Smooth
+The bundled file is compressed to **256 × 144 pixels**, with its unused audio
+removed. Each video frame is limited to **256 pixels on its longest
+side** before being cropped to cover the screen. Smooth
 texture filtering gives the enlarged picture a softer CRT look. Smaller source
 videos keep their original resolution. Change `MAX_VIDEO_TEXTURE_SIZE` in
 `src/tv-video.js` to adjust this limit.
@@ -83,10 +84,23 @@ return. Click **TV video: Off** to resume silent playback from the paused positi
 To choose a different video, put an MP4, WebM, or OGV file in `content/` and update
 `TV_VIDEO_URL` at the top of `src/scene.js`. The file must use a codec supported by
 your browser. Reload the development page, or run `npm run build` for both packaged
-editions. The source video folder is gitignored, so supply that file in a fresh checkout.
+editions. Only the compressed MP4 is included in source control so GitHub Actions
+can build from a fresh checkout. The full-resolution original remains local and
+gitignored. Compress replacement clips to at most 256 pixels in either dimension,
+then update the exception in `.gitignore` and commit only the compressed file.
+
+To reproduce the bundled compression with FFmpeg:
+
+```sh
+ffmpeg -i content/11543712-hd_1920_1080_30fps.mp4 \
+  -map 0:v:0 \
+  -vf 'scale=256:256:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setsar=1' \
+  -c:v libx264 -preset slow -crf 28 -pix_fmt yuv420p \
+  -an -map_metadata -1 -movflags +faststart content/11543712-256px.mp4
+```
 
 The production build includes the selected video as a local asset. The single-file
-build embeds it, increasing that HTML file's size (about 36 MB with the current clip).
+build embeds the same compressed clip.
 If browser policy blocks muted autoplay, clicking the scene starts playback.
 If the video cannot load, the original screen remains visible with a status message.
 
@@ -156,7 +170,7 @@ camera movement. See `vendor/crt/README.md` and `LICENSE.txt` for source attribu
 
 ## Optional Vite workflow
 
-Use Node.js 22.12 or newer. Installation requires internet access; the app itself does not.
+Use Node.js 24 (recorded in `.nvmrc`). Installation requires internet access; the app itself does not.
 
 ```sh
 npm install
@@ -170,10 +184,38 @@ npm run build
 npm run preview
 ```
 
-A verified production build is already included in `dist/`. Upload the contents of `dist/` to a static host. Build output is left unminified for inspection. The official WebAssembly compiler fallback is included in the development dependencies for systems where Vite's native compiler is unavailable.
+The production build is generated in `dist/`, which is gitignored. Upload the contents of `dist/` to a static host after building. Build output is left unminified for inspection. The official WebAssembly compiler fallback is included in the development dependencies for systems where Vite's native compiler is unavailable.
 
 `npm run build` also regenerates the offline single-file edition. Run
 `npm run build:standalone` to regenerate only that file without Vite.
+
+## Deploy to GitHub Pages
+
+The workflow in `.github/workflows/pages.yml` follows the same build/deploy setup
+as `~/matthew-cook-static`: Node.js 24, `npm ci`, a build job that uploads `dist/`,
+and a deployment job using the `github-pages` environment. It also runs `npm test`
+before building. Pushes to `main` deploy automatically; **Build and deploy GitHub
+Pages** can also be run manually from the Actions tab.
+
+1. Commit and push the source changes, including `.github/workflows/pages.yml`,
+   `.nvmrc`, `package-lock.json`, and `content/11543712-256px.mp4`.
+2. In the repository's **Settings → Pages → Build and deployment**, set **Source**
+   to **GitHub Actions**.
+3. Push to `main`, or run the workflow manually.
+
+For the current `lookitscook/christmas-credenza` repository, the default published
+URL will be **https://lookitscook.github.io/christmas-credenza/**. The workflow gets
+the site's base path from GitHub Pages, so the JavaScript, textures, and video load
+under the repository URL. A custom domain configured in Pages uses `/` instead.
+No deploy token or additional secret is needed; the workflow uses `GITHUB_TOKEN`.
+
+The workflow rebuilds from source on every run. Its artifact contains the scene,
+video, paper textures, and license notices from `dist/`; the offline
+`standalone.html` is generated by the build but is not part of the Pages artifact.
+To verify the project URL paths locally, run `BASE_PATH=/christmas-credenza/ npm run
+build`. Running `npm run build` without that variable produces portable relative paths.
+
+See [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
 
 ## Files
 
@@ -184,11 +226,12 @@ A verified production build is already included in `dist/`. Upload the contents 
 - `src/crt-shader.js`, `src/crt-controls.js`, `src/effect-panels.js` — CRT picture effects, live controls, and reopenable settings panels.
 - `src/camera-controls.js`, `src/scene-state.js` — constrained orbit/pan/zoom, JSON import/export, and automatic state persistence.
 - `scripts/build-standalone.mjs` — reproducible offline single-file packaging.
+- `.github/workflows/pages.yml`, `.nvmrc` — GitHub Pages build/deploy workflow and Node.js version.
 - `original/scene.js` — unmodified module text recovered from the requested post.
 - `original/rendered-app.html` — archived live iframe DOM, including the original host wrapper. This is a source record and retains its original external URLs; use the runnable files above.
 - `original/preview.png` — the original scene captured in the conversation.
 - `EXTRACTION.json` — source identification, SHA-256 hashes, and packaging changes.
-- `dist/` — prebuilt Vite application.
+- `dist/` — generated Vite application (gitignored).
 
 ## Original extraction and subsequent changes
 

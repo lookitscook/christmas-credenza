@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 import { copyFile, mkdir } from 'node:fs/promises';
 export default defineConfig({
-  base: './',
+  // Pages supplies /repository/ (or / for a custom domain). Local builds stay portable.
+  base: process.env.BASE_PATH || './',
   build: { target: 'es2022', minify: false, cssMinify: false },
   plugins: [{
     name: 'bundle-third-party-licenses',

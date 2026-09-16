@@ -1,5 +1,5 @@
 // Change this path to choose the video shown on the television.
-const TV_VIDEO_URL = new URL('../content/11543712-hd_1920_1080_30fps.mp4', import.meta.url).href;
+const TV_VIDEO_URL = new URL('../content/11543712-256px.mp4', import.meta.url).href;
 const root = document.getElementById('christmas-credenza-tight-3d');
 const stage = root.querySelector('.scene-stage');
 const message = root.querySelector('.scene-message');
