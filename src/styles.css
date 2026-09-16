@@ -1041,6 +1041,8 @@ body{overflow:visible!important}
 
 .scene-toolbar { position:sticky; top:0; z-index:10; padding:12px 8px; margin-bottom:12px; background:var(--background); border-bottom:1px solid var(--border); }
 .scene-toolbar [aria-expanded="true"] { background:var(--accent); }
+.state-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:8px; padding:0 8px 12px; }
+.state-toolbar [role="status"] { flex:1 1 220px; }
 .scene-workspace { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:16px; }
 .tv-status:empty { display:none; }
 .tv-status:not(:empty) { margin:0 8px 12px; }

@@ -7,6 +7,7 @@ export function createCRTControls(root, crt, invalidate) {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   const controls = new Map();
+  const parameters = { ...CRT_DEFAULTS };
   const sections = new Map();
   for (const setting of CRT_CONTROLS) {
     const { group, key, label, min, max, step, percent } = setting;
@@ -32,6 +33,7 @@ export function createCRTControls(root, crt, invalidate) {
     Object.assign(input, { type: 'range', className: 'form-range', id: caption.htmlFor, name: key, min, max, step });
     const decimals = step === 1 ? 0 : step < .01 ? 3 : 2;
     function update(value) {
+      parameters[key] = value;
       input.value = value;
       output.value = percent ? `${Number((value * 100).toFixed(1))}%` : value.toFixed(decimals);
       input.setAttribute('aria-valuetext', output.value);
@@ -51,6 +53,13 @@ export function createCRTControls(root, crt, invalidate) {
     invalidate();
   }, options);
   return {
+    getState() { return { enabled: enabled.checked, parameters: { ...parameters } }; },
+    setState(state) {
+      for (const [key, update] of controls) update(state.parameters[key]);
+      enabled.checked = state.enabled;
+      crt.setShaderEnabled(state.enabled);
+      invalidate();
+    },
     setAvailable(available) { fieldset.disabled = !available; },
     dispose() { listeners.abort(); fieldset.disabled = true; },
   };

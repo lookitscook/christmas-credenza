@@ -8,6 +8,8 @@ try {
   const { createPostProcessing } = await import('./post-processing.js');
   const { createTVVideo } = await import('./tv-video.js');
   const { createEffectPanels } = await import('./effect-panels.js');
+  const { createCameraRig, attachCameraControls, CAMERA_DEFAULTS } = await import('./camera-controls.js');
+  const { createScenePersistence, STATE_APP, STATE_VERSION } = await import('./scene-state.js');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#3b2619');
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
@@ -19,10 +21,7 @@ try {
   renderer.toneMappingExposure = 1.25;
   stage.appendChild(renderer.domElement);
   const camera = new THREE.PerspectiveCamera(36,1.5,0.02,25);
-  const target = new THREE.Vector3(0.32,1.42,0);
-  let yaw=-0.055, pitch=0.27, distance=4.2;
-  function placeCamera(){camera.position.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);camera.lookAt(target);}
-  placeCamera();
+  const cameraRig = createCameraRig(camera);
 
   let seed=4468;
   function random(){seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;}
@@ -173,7 +172,7 @@ try {
   function coach(offset){const g=trainGroup(offset),body=standard('#52231b',.45,.1),cream=standard('#d4bc86',.48),roof=standard('#343432',.65);box(.25,.056,.065,0,.058,0,body,g);box(.251,.026,.066,0,.071,0,cream,g);box(.256,.007,.067,0,.03,0,black,g);const roofMesh=cylinder(.036,.036,.255,0,.089,0,roof,g,24);roofMesh.rotation.z=Math.PI/2;roofMesh.scale.z=.98;roofMesh.scale.x=.40;
     const windowMat=new THREE.MeshStandardMaterial({color:'#423c2b',emissive:'#eaa843',emissiveIntensity:.35,roughness:.22,metalness:.2});for(const z of [-.034,.034]){for(let i=0;i<9;i++){box(.018,.020,.001,-.104+i*.026,.072,z,windowMat,g);box(.001,.020,.001,-.104+i*.026,.072,z+(z>0?.001:-.001),brass,g);}for(const x of [-.080,-.058,.058,.080])wheel(g,x,.018,Math.sign(z)*.016,.009);}return g;}
   coach(.429);coach(.709);
-  let trainS=1.045,runTrain=false;
+  let trainS=1.045,runTrain=false,wheelTravel=0;
   function placeTrain(){for(const {g,offset} of trainPieces){const p=trackAt(trainS-offset);g.position.set(p.x,trackY+.002,p.z);g.rotation.y=p.angle+Math.PI;}}
   placeTrain();
 
@@ -290,18 +289,25 @@ try {
   function render(){requested=false;postProcessing.render(scene,camera);}
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
   const tvVideo=createTVVideo({src:TV_VIDEO_URL,screen:glass,root,invalidate});
-  function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.getDrawingBufferSize(drawingSize);postProcessing.setSize(drawingSize.x,drawingSize.y);camera.aspect=w/h;camera.updateProjectionMatrix();invalidate();}
+  let persistence;
+  function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.getDrawingBufferSize(drawingSize);postProcessing.setSize(drawingSize.x,drawingSize.y);camera.aspect=w/h;camera.updateProjectionMatrix();cameraRig.resize();invalidate();persistence?.scheduleSave();}
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);resize();
-  const pointers=new Map();let previousGap=0;
-  renderer.domElement.addEventListener('pointerdown',e=>{pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});renderer.domElement.setPointerCapture(e.pointerId);previousGap=0;});
-  renderer.domElement.addEventListener('pointermove',e=>{const p=pointers.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1){yaw-=dx*.004;pitch=Math.max(.05,Math.min(.92,pitch+dy*.003));yaw=Math.max(-1.1,Math.min(1.1,yaw));}else{const ps=[...pointers.values()];const gap=Math.hypot(ps[0].x-ps[1].x,ps[0].y-ps[1].y);if(previousGap)distance=Math.max(1.7,Math.min(4.8,distance*previousGap/gap));previousGap=gap;}placeCamera();invalidate();});
-  for(const ev of ['pointerup','pointercancel'])renderer.domElement.addEventListener(ev,e=>{pointers.delete(e.pointerId);previousGap=0;});
-  renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();distance=Math.max(1.7,Math.min(4.8,distance*Math.exp(e.deltaY*.001)));placeCamera();invalidate();},{passive:false});
-  let prevTime=0;
-  function animate(t){if(!runTrain || !root.isConnected){prevTime=0;return;}const dt=prevTime?Math.min((t-prevTime)/1000,.05):0;prevTime=t;trainS+=dt*.11;placeTrain();for(const w of wheels)w.hub.rotation.z+=dt*.11/w.r;invalidate();requestAnimationFrame(animate);}
+  const cameraControls=attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
+  root.querySelector('[data-action="reset-view"]').addEventListener('click',()=>{cameraRig.setState(CAMERA_DEFAULTS);invalidate();});
+  let prevTime=0,trainFrame=null;
+  function placeWheels(){for(const w of wheels)w.hub.rotation.z=(wheelTravel/w.r)%(2*Math.PI);}
+  function animate(t){trainFrame=null;if(!runTrain || !root.isConnected){prevTime=0;return;}const dt=prevTime?Math.min((t-prevTime)/1000,.05):0;prevTime=t;trainS=(trainS+dt*.11)%loopLength;wheelTravel+=dt*.11;placeTrain();placeWheels();invalidate();trainFrame=requestAnimationFrame(animate);}
   const trainButton=root.querySelector('[data-action="train"]');
-  trainButton.addEventListener('click',()=>{runTrain=!runTrain;trainButton.textContent=runTrain?'Pause train':'Run train';trainButton.setAttribute('aria-pressed',String(runTrain));if(runTrain)requestAnimationFrame(animate);});
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();runTrain=false;tvVideo.dispose();panels.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  function setTrainRunning(value){runTrain=value;prevTime=0;if(trainFrame!==null)cancelAnimationFrame(trainFrame);trainFrame=null;trainButton.textContent=runTrain?'Pause train':'Run train';trainButton.setAttribute('aria-pressed',String(runTrain));if(runTrain)trainFrame=requestAnimationFrame(animate);}
+  trainButton.addEventListener('click',()=>setTrainRunning(!runTrain));
+  function getState(){return {app:STATE_APP,version:STATE_VERSION,camera:cameraRig.getState(),train:{running:runTrain,position:trainS,wheelTravel},...tvVideo.getState(),...postProcessing.getState(),panels:panels.getState()};}
+  function applyState(state){
+    cameraRig.setState(state.camera);
+    trainS=state.train.position%loopLength;wheelTravel=state.train.wheelTravel;placeTrain();placeWheels();setTrainRunning(state.train.running);
+    tvVideo.setState(state);postProcessing.setState(state);panels.setState(state.panels);invalidate();
+  }
+  persistence=createScenePersistence(root,getState,applyState);
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();persistence.dispose();setTrainRunning(false);cameraControls.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';

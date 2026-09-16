@@ -15,6 +15,10 @@ const areaLight = (await read('vendor/lights/RectAreaLightUniformsLib.js')).repl
 const crtShader = await read('src/crt-shader.js');
 const crtControls = (await read('src/crt-controls.js')).replace("'./crt-shader.js'", "'crt-shader'");
 const panels = await read('src/effect-panels.js');
+const cameraControls = (await read('src/camera-controls.js')).replace("'../vendor/three.module.js'", "'three'");
+const sceneState = (await read('src/scene-state.js'))
+  .replace("'./crt-shader.js'", "'crt-shader'")
+  .replace("'./cross-hatch.js'", "'cross-hatch'");
 const crt = (await read('src/crt-screen.js'))
   .replace("'../vendor/three.module.js'", "'three'")
   .replace("'../vendor/lights/RectAreaLightUniformsLib.js'", "'rect-area-light'")
@@ -27,7 +31,9 @@ let scene = (await read('src/scene.js'))
   .replace("'../vendor/three.module.js'", "'three'")
   .replace("'./post-processing.js'", "'post-processing'")
   .replace("'./tv-video.js'", "'tv-video'")
-  .replace("'./effect-panels.js'", "'effect-panels'");
+  .replace("'./effect-panels.js'", "'effect-panels'")
+  .replace("'./camera-controls.js'", "'camera-controls'")
+  .replace("'./scene-state.js'", "'scene-state'");
 for (const match of [...scene.matchAll(/new URL\('([^']+\.(mp4|webm|ogv))', import\.meta\.url\)\.href/g)]) {
   const bytes = await readFile(new URL(match[1], new URL('src/', root)));
   const mime = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg' }[match[2]];
@@ -43,6 +49,8 @@ const importMap = JSON.stringify({ imports: {
   'crt-shader': moduleURL(crtShader),
   'crt-controls': moduleURL(crtControls),
   'effect-panels': moduleURL(panels),
+  'camera-controls': moduleURL(cameraControls),
+  'scene-state': moduleURL(sceneState),
 } });
 let html = await read('index.html');
 for (const path of ['vendor/app-block-sandbox.css', 'src/styles.css']) {

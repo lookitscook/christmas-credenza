@@ -62,9 +62,10 @@ export function createPostProcessing(renderer, root, invalidate, panels) {
     }
   }
 
-  select.addEventListener('change', () => {
-    active = select.value === 'cross-hatch';
-    if (active) panels.setOpen('hatch', true);
+  function setEffect(name, openPanel = false) {
+    select.value = name;
+    active = name === 'cross-hatch';
+    if (active && openPanel) panels.setOpen('hatch', true);
     if (active && !effect) {
       effect = new CrossHatchEffect(renderer);
       effect.setSize(width, height);
@@ -73,7 +74,8 @@ export function createPostProcessing(renderer, root, invalidate, panels) {
       loadPaper();
     }
     invalidate();
-  });
+  }
+  select.addEventListener('change', () => setEffect(select.value, true));
   paper.addEventListener('change', () => {
     params.paper = paper.value;
     loadPaper();
@@ -83,8 +85,8 @@ export function createPostProcessing(renderer, root, invalidate, panels) {
     effect?.setParameter('inkColor', params.inkColor);
     invalidate();
   });
-  root.querySelector('[data-action="reset-hatch"]').addEventListener('click', () => {
-    Object.assign(params, HATCH_DEFAULTS);
+  function setParameters(values) {
+    Object.assign(params, values);
     for (const { key } of HATCH_SLIDERS) {
       const input = grid.querySelector(`[name="${key}"]`);
       input.value = params[key];
@@ -96,10 +98,13 @@ export function createPostProcessing(renderer, root, invalidate, panels) {
     paper.value = params.paper;
     loadPaper();
     invalidate();
-  });
+  }
+  root.querySelector('[data-action="reset-hatch"]').addEventListener('click', () => setParameters(HATCH_DEFAULTS));
   select.disabled = false;
 
   return {
+    getState() { return { effect: active ? 'cross-hatch' : 'none', hatch: { ...params } }; },
+    setState(state) { setParameters(state.hatch); setEffect(state.effect); },
     setSize(w, h) {
       width = w;
       height = h;

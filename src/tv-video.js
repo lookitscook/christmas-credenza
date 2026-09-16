@@ -54,6 +54,7 @@ export function createTVVideo({ src, screen, root, invalidate }) {
   let frameCallback = null;
   let animationFrame = null;
   let lastTime = -1;
+  let pendingTime = null;
   const hasVideoFrames = typeof video.requestVideoFrameCallback === 'function';
 
   function updateLight() {
@@ -157,7 +158,19 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     }
   }
 
-  video.addEventListener('loadedmetadata', fitVideo, options);
+  function restoreTime() {
+    if (pendingTime === null || video.readyState < video.HAVE_METADATA || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    video.currentTime = pendingTime % video.duration;
+    pendingTime = null;
+    lastTime = -1;
+  }
+  video.addEventListener('loadedmetadata', () => { fitVideo(); restoreTime(); }, options);
+  video.addEventListener('seeked', () => {
+    if (video.readyState < video.HAVE_CURRENT_DATA) return;
+    copyFrame();
+    if (enabled) updateLight();
+    invalidate();
+  }, options);
   video.addEventListener('resize', fitVideo, options);
   video.addEventListener('loadeddata', () => {
     fitVideo();
@@ -212,5 +225,16 @@ export function createTVVideo({ src, screen, root, invalidate }) {
 
   video.src = src;
   play();
-  return { dispose, setEnabled };
+  return {
+    dispose, setEnabled,
+    getState() {
+      return { tv: { enabled, currentTime: pendingTime ?? video.currentTime }, crt: controls.getState() };
+    },
+    setState(state) {
+      controls.setState(state.crt);
+      pendingTime = state.tv.currentTime;
+      restoreTime();
+      setEnabled(state.tv.enabled);
+    },
+  };
 }
