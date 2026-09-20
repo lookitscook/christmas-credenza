@@ -11,9 +11,17 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
   let nextFrame = 0, now = 0, scene;
   function element() {
     const handlers = new Map();
+    const classes = new Set();
     return {
       textContent: '', clientWidth: 600, clientHeight: 600, captured: null,
-      style: {}, children: [], classList: { toggle() {} },
+      style: { setProperty(name, value) { this[name] = value; } }, children: [],
+      classList: {
+        toggle(name, force = !classes.has(name)) {
+          if (force) classes.add(name); else classes.delete(name);
+          return force;
+        },
+        contains(name) { return classes.has(name); },
+      },
       get offsetWidth() { return this.textContent.length * 7 + 14; },
       offsetHeight: 22,
       setAttribute() {}, appendChild(child) { this.children.push(child); },
@@ -25,7 +33,11 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
       },
       setPointerCapture(id) { this.captured = id; },
       hasPointerCapture(id) { return this.captured === id; },
-      releasePointerCapture() { this.captured = null; },
+      releasePointerCapture() {
+        const pointerId = this.captured;
+        this.captured = null;
+        this.fire('lostpointercapture', { pointerId });
+      },
     };
   }
   const window = element();
@@ -92,12 +104,56 @@ function assertReticleCentered(app) {
   const point = layer.children.filter(child => child.className === 'pad-landmark-point')[index];
   assert.equal(app.elements['pad-emotion'].textContent, model.PAD_EMOTIONS[index][0]);
   assert.equal(point.hidden, false);
+  assert.equal(point.classList.contains('is-centered'), true);
   assert.ok(Math.abs(parseFloat(point.style.left) - stage.clientWidth / 2) < 1e-8);
   assert.ok(Math.abs(parseFloat(point.style.top) - stage.clientHeight / 2) < 1e-8);
   const marker = app.group.children.find(child => child.geometry?.parameters?.radius === .055);
   const center = marker.getWorldPosition(new THREE.Vector3());
   assert.ok(Math.hypot(center.x, center.y) < 1e-12);
+  const halo = app.group.children.find(child => child.geometry?.parameters?.innerRadius === .085);
+  const expectedSize = stage.clientHeight * halo.geometry.parameters.innerRadius
+    / (Math.tan(THREE.MathUtils.degToRad(34) / 2)
+      * (model.padCameraDistance(stage.clientWidth / stage.clientHeight) - center.z));
+  assert.ok(Math.abs(parseFloat(layer.style['--pad-reticle-fill-size']) - expectedSize) < 1e-8);
 }
+
+test('only a settled, centered point expands, and dragging or moving collapses it', async () => {
+  const app = await selector();
+  const layer = app.elements['pad-stage'].children.find(child => child.className === 'pad-landmarks');
+  const points = layer.children.filter(child => child.className === 'pad-landmark-point');
+  const expanded = () => points.filter(point => point.classList.contains('is-centered'));
+  assert.equal(expanded().length, 1);
+  app.pointer('pointerdown');
+  assert.equal(expanded().length, 0, 'shrink at drag start even before rotation');
+  app.pointer('pointermove', 310, 300);
+  app.pointer('pointercancel');
+  assert.equal(expanded().length, 0, 'a nearby but off-center selection must stay small');
+
+  const picker = app.elements['pad-landmark-picker'];
+  const next = model.PAD_EMOTIONS.findIndex(([name]) => name === 'Happy');
+  picker.value = String(next);
+  picker.fire('change');
+  for (const time of [0, 210, 419]) {
+    app.tick(time);
+    assert.equal(expanded().length, 0, 'no expansion before the snap finishes');
+  }
+  app.tick(420);
+  assert.deepEqual(expanded(), [points[next]]);
+  assertReticleCentered(app);
+  assert.equal(points[next].style['--pad-point-color'], model.padColorHex(...model.PAD_EMOTIONS[next].slice(1)));
+  assert.deepEqual(visibleLabelNames(app), []);
+
+  const radius = 1.86 * 300 / 2.08;
+  app.pointer('pointerdown', 300 + radius, 300);
+  assert.equal(expanded().length, 0, 'an intensity drag also collapses the selected point');
+  app.pointer('pointerup', 300 + radius, 300);
+  app.tick(840);
+  assertReticleCentered(app);
+  app.canvas.fire('keydown', { key: 'ArrowRight' });
+  assert.equal(expanded().length, 0);
+  app.elements['pad-neutral'].fire('click');
+  assert.equal(expanded().length, 0);
+});
 
 test('the selected landmark is centered under the reticle on the first frame and after resizing', async () => {
   const app = await selector();
@@ -243,7 +299,7 @@ test('clicking a label fades all labels and keeps them hidden after snapping', a
   assert.equal(leaders.filter(leader => !leader.hidden).length, 0);
 });
 
-test('new drags interrupt snapping, cancelled drags do not snap, and reset stays neutral', async () => {
+test('new drags interrupt snapping, cancelled drags finish centered, and reset stays neutral', async () => {
   const app = await selector();
   app.pointer('pointerdown');
   app.pointer('pointermove', 360, 320);
@@ -255,15 +311,76 @@ test('new drags interrupt snapping, cancelled drags do not snap, and reset stays
   assert.ok(interrupted.angleTo(app.group.quaternion) < 1e-7);
   assert.equal(visibleLabelNames(app).length, 4);
   app.pointer('pointercancel');
+  assert.ok(app.frames.size > 0);
+  app.tick(920);
+  assertReticleCentered(app);
   assert.equal(app.frames.size, 0);
   app.pointer('pointerdown');
   app.pointer('pointermove', 330, 320);
   app.pointer('pointerup', 330, 320);
-  app.tick(600);
+  app.tick(1020);
   app.elements['pad-neutral'].fire('click');
-  app.tick(1000);
+  app.tick(1420);
   assert.equal(app.elements['pad-emotion'].textContent, 'Neutral');
   assert.ok(app.elements['pad-values'].textContent.endsWith('· 0%'));
+  assert.equal(app.frames.size, 0);
+});
+
+test('every drag-ending path snaps once to the surface-nearest emotion after large rotations', async () => {
+  const endings = [
+    app => app.pointer('pointerup', 1600, -400),
+    app => app.pointer('pointercancel'),
+    app => app.canvas.releasePointerCapture(),
+    app => app.window.fire('pointerup', { pointerId: 1 }),
+    app => app.window.fire('pointercancel', { pointerId: 1 }),
+    app => app.window.fire('blur'),
+    app => app.canvas.fire('pointermove', { pointerId: 1, buttons: 0, pointerType: 'mouse', clientX: -900, clientY: 1500 }),
+  ];
+  for (const end of endings) {
+    const app = await selector();
+    app.pointer('pointerdown');
+    for (let step = 1; step <= 24; step++) {
+      app.pointer('pointermove', 300 + Math.sin(step * 2.7) * 1400, 300 + Math.cos(step * 1.9) * 900);
+    }
+    const before = app.group.quaternion.clone();
+    assert.ok(Math.abs(before.length() - 1) < 1e-12);
+    const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(before.clone().invert());
+    const expected = model.nearestPadEmotion(model.dirToPad(direction, 1));
+    end(app);
+    assert.equal(app.canvas.captured, null);
+    assert.deepEqual(visibleLabelNames(app), []);
+    // A repeated release/capture notification must not restart the snap.
+    app.tick(210);
+    app.window.fire('pointerup', { pointerId: 1 });
+    app.pointer('lostpointercapture');
+    app.tick(420);
+    assertReticleCentered(app);
+    assert.equal(app.elements['pad-emotion'].textContent, expected.name);
+    assert.equal(app.frames.size, 0);
+  }
+});
+
+test('quick drags do not reset via a synthesized double-click, but stationary double-clicks still reset', async () => {
+  const app = await selector();
+  app.pointer('pointerdown');
+  app.pointer('pointermove', 365, 340);
+  app.pointer('pointerup', 365, 340);
+  app.canvas.fire('dblclick');
+  app.tick(420);
+  assertReticleCentered(app);
+  assert.notEqual(app.elements['pad-emotion'].textContent, 'Neutral');
+  app.pointer('pointerdown');
+  app.pointer('pointerup');
+  app.canvas.fire('dblclick');
+  app.tick(840);
+  assertReticleCentered(app);
+  for (let click = 0; click < 2; click++) {
+    app.pointer('pointerdown');
+    app.pointer('pointerup');
+  }
+  app.canvas.fire('dblclick');
+  app.tick(1260);
+  assert.equal(app.elements['pad-emotion'].textContent, 'Neutral');
   assert.equal(app.frames.size, 0);
 });
 

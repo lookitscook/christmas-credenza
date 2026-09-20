@@ -38,6 +38,7 @@ function createSelector() {
   const options = { signal: listeners.signal };
   let frame = null, disposed = false, snap = null;
   let activePointer = null, dragMode = null, lastX = 0, lastY = 0;
+  let dragDistance = 0, lastDragMoved = false, previousDragMoved = false;
   function invalidate() {
     if (frame !== null || disposed) return;
     frame = requestAnimationFrame(now => {
@@ -122,7 +123,7 @@ function createSelector() {
     point.className = 'pad-landmark-point';
     point.type = 'button';
     point.tabIndex = -1; // The native picker provides keyboard access to every term.
-    point.style.backgroundColor = padColorHex(p, a, d);
+    point.style.setProperty('--pad-point-color', padColorHex(p, a, d));
     const source = padEmotionSource(name);
     point.title = `${name}: P ${p.toFixed(2)}, A ${a.toFixed(2)}, D ${d.toFixed(2)} · ${source.year}, ${source.term}`;
     const leader = document.createElement('span');
@@ -158,19 +159,33 @@ function createSelector() {
   function updateLandmarks(selectedLabel) {
     camera.updateMatrixWorld();
     const width = stage.clientWidth, height = stage.clientHeight;
+    const reticleCenter = halo.getWorldPosition(new THREE.Vector3()).project(camera);
+    const reticleEdge = halo.localToWorld(new THREE.Vector3(halo.geometry.parameters.innerRadius, 0, 0)).project(camera);
+    const fillSize = Math.hypot((reticleEdge.x - reticleCenter.x) * width, (reticleEdge.y - reticleCenter.y) * height);
+    labelLayer.style.setProperty('--pad-reticle-fill-size', `${fillSize}px`);
+    labelLayer.style.setProperty('--pad-reticle-fill-scale', String(fillSize / 8));
+    labelLayer.style.setProperty('--pad-reticle-dot-scale', String(8 / fillSize));
     const visible = [];
     for (const landmark of landmarks) {
       const world = landmark.position.clone().applyQuaternion(group.quaternion);
       // Hide points on the far side, accounting for the perspective camera.
       const facing = world.dot(camera.position.clone().sub(world)) > 0;
       landmark.point.hidden = true;
-      if (!facing) continue;
+      if (!facing) {
+        landmark.point.classList.toggle('is-centered', false);
+        continue;
+      }
       const projected = world.project(camera);
       landmark.x = (projected.x + 1) * width / 2;
       landmark.y = (1 - projected.y) * height / 2;
       landmark.point.style.left = `${landmark.x}px`;
       landmark.point.style.top = `${landmark.y}px`;
       landmark.point.classList.toggle('is-selected', landmark.name === selectedLabel);
+      // A nearby selection is not yet a centered selection. Keep its ordinary
+      // point style throughout dragging and snapping, then expand on arrival.
+      const centered = landmark.name === selectedLabel && activePointer === null && !snap
+        && Math.hypot(landmark.x - width / 2, landmark.y - height / 2) < .01;
+      landmark.point.classList.toggle('is-centered', centered);
       landmark.label.classList.toggle('is-selected', landmark.name === selectedLabel);
       visible.push(landmark);
     }
@@ -270,8 +285,8 @@ function createSelector() {
     releaseDrag();
     snap = null;
     const direction = new THREE.Vector3(emotion.p, emotion.a, emotion.d).normalize();
-    const correction = new THREE.Quaternion().setFromUnitVectors(direction.applyQuaternion(group.quaternion), front);
-    const to = group.quaternion.clone().premultiply(correction);
+    const correction = new THREE.Quaternion().setFromUnitVectors(direction.applyQuaternion(group.quaternion).normalize(), front);
+    const to = group.quaternion.clone().premultiply(correction).normalize();
     const intensityTo = Math.max(Math.abs(emotion.p), Math.abs(emotion.a), Math.abs(emotion.d));
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       group.quaternion.copy(to);
@@ -287,7 +302,7 @@ function createSelector() {
   function neutral() { releaseDrag(); snap = null; intensity = 0; update(); }
   function rotate(dx, dy) {
     const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(dy * .006, dx * .006, 0, 'XYZ'));
-    group.quaternion.premultiply(rotation);
+    group.quaternion.premultiply(rotation).normalize();
     selectedDirection.set(0, 0, 1).applyQuaternion(group.quaternion.clone().invert()).normalize();
     update();
   }
@@ -324,6 +339,7 @@ function createSelector() {
     else return;
     snap = null;
     activePointer = event.pointerId;
+    dragDistance = 0;
     updateLandmarks(emotionEl.textContent);
     event.preventDefault();
     lastX = event.clientX; lastY = event.clientY;
@@ -333,23 +349,36 @@ function createSelector() {
   }, options);
   canvas.addEventListener('pointermove', event => {
     if (event.pointerId !== activePointer) return;
+    // Recover if the mouse was released outside the window and its pointerup
+    // was missed. Do not keep rotating after the button is already up.
+    if (event.buttons === 0 && event.pointerType !== 'touch') { endDrag(event); return; }
+    dragDistance += Math.hypot(event.clientX - lastX, event.clientY - lastY);
     if (dragMode === 'ring') changeIntensity(event);
     else if (dragMode === 'sphere') rotate(event.clientX - lastX, event.clientY - lastY);
     lastX = event.clientX; lastY = event.clientY;
   }, options);
   function releaseDrag() {
     const pointerId = activePointer;
+    if (pointerId !== null) {
+      previousDragMoved = lastDragMoved;
+      lastDragMoved = dragDistance > 3;
+    }
     activePointer = dragMode = null;
     if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
   }
   function endDrag(event) {
     if (event.pointerId !== activePointer) return;
     releaseDrag();
-    if (event.type === 'pointerup') snapToEmotion();
-    else updateLandmarks(emotionEl.textContent);
+    snapToEmotion();
   }
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(type, endDrag, options);
-  canvas.addEventListener('dblclick', neutral, options);
+  for (const type of ['pointerup', 'pointercancel']) window.addEventListener(type, endDrag, options);
+  window.addEventListener('blur', () => {
+    if (activePointer !== null) snapToEmotion();
+  }, options);
+  // Browsers can synthesize dblclick after two quick drags. Only stationary
+  // double-clicks should reset; a drag must retain its centered destination.
+  canvas.addEventListener('dblclick', () => { if (!lastDragMoved && !previousDragMoved) neutral(); }, options);
   neutralButton.addEventListener('click', neutral, options);
   canvas.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '+', '=', '-', '_', 'Home'].includes(event.key)) return;

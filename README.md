@@ -162,6 +162,8 @@ Drag the colored triangle mesh to choose the Pleasure, Arousal, and Dominance
 direction, and drag the ring to change intensity. The ring has an inactive
 90-degree gap at the bottom. Releasing either drag eases rotation and intensity
 to the nearest emotion landmark over 420 ms; a new drag interrupts the snap.
+Cancelled drags, lost pointer capture, and window blur also finish by snapping;
+releasing outside the canvas cannot leave the globe between landmarks.
 Nearest emotions and labels use great-circle distance between directions on the
 globe, ignoring intensity. The destination then restores its recorded intensity.
 At zero intensity, snapping still uses the globe's retained direction.
@@ -188,6 +190,13 @@ Labels and their leader lines stay hidden on page load, while idle, and througho
 snapping. Ending or cancelling a drag fades them out until the next drag.
 The dropdown continues to show the selected emotion, including after clicking a
 point or label or choosing an emotion directly.
+Once centered and at rest, the selected point expands to fill the reticle's
+interior with its measured color, without the point's white border or dark outline.
+The original bordered dot scales up and fades as a separate layer of color expands
+to fill the reticle over 240 ms. Dragging or snapping reverses that transition back
+to the normal dot.
+The fill tracks the reticle's projected size when resizing; reduced-motion
+preferences disable the scaling and fading animation.
 The four nearest points always get display slots.
 The selection and hovered point also remain visible when
 front-facing; hover shows a tooltip without replacing any of the four labels.
