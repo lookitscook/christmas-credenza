@@ -28,7 +28,7 @@ h2 { margin: 0; font-size: 16px; font-weight: 600; }
 .inspector { border-left: 1px solid var(--page-border); min-width: 0; background: var(--page-background); }
 .settings-section { padding: 23px; border-bottom: 1px solid var(--page-border); }
 .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 22px; }
-.color-control, .ink-controls label, .background-controls > label:first-child { display: grid; gap: 7px; font-size: 14px; min-width: 0; }
+.color-control, .background-controls > label:first-child { display: grid; gap: 7px; font-size: 14px; min-width: 0; }
 .color-control input[type="text"] { min-width: 0; width: 100%; padding: 5px; font: 13px ui-monospace, monospace; border: 1px solid var(--page-border); border-radius: 4px; color: var(--page-muted); background: var(--page-control); }
 input[type="color"] { appearance: none; width: 100%; height: 36px; padding: 3px; background: var(--page-control); border: 1px solid var(--page-border); border-radius: 6px; cursor: pointer; }
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
@@ -45,7 +45,6 @@ input[type="checkbox"] { accent-color: var(--page-foreground); width: 17px; heig
 fieldset { min-width: 0; border: 0; padding: 0; margin: 18px 0 0; }
 fieldset:disabled { opacity: .4; }
 fieldset[hidden] { display: none; }
-.ink-controls { display: grid; grid-template-columns: 72px; gap: 18px; margin-top: 18px; }
 select { min-width: 0; max-width: 100%; }
 .background-controls { display: grid; grid-template-columns: 105px 1fr; align-items: center; gap: 24px; margin: 18px 0; }
 .export-size { display: grid; gap: 7px; font-size: 14px; }

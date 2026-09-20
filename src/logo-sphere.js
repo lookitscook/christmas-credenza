@@ -74,7 +74,6 @@ export class LogoSphere {
     // Saturation changes the source colors before the hatch separates them into ink.
     for (const key of ['midpoint', 'saturation', 'highlight', 'softness', 'grain']) this.uniforms[key].value = settings[key] / 100;
     for (const { key } of HATCH_SLIDERS) this.effect.setParameter(key, settings[key]);
-    this.effect.setParameter('inkColor', settings.inkColor);
     if (settings.hatchEnabled) this.effect.render(this.scene, this.camera);
     else this.renderer.render(this.scene, this.camera);
   }

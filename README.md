@@ -33,7 +33,7 @@ framed to include the whole tree and its topper; scroll or pinch to see details.
 a previously saved file. A snapshot includes:
 
 - Camera orbit, zoom, and pan target (together specifying its position and direction).
-- All CRT and Cross-hatch values, ink color, and selected effect.
+- All CRT and Cross-hatch values and selected effect.
 - TV on/off state and playback position.
 - Train running/paused state, track position, and wheel rotation.
 - Which settings panels are open.
@@ -107,15 +107,14 @@ If the video cannot load, the original screen remains visible with a status mess
 Open **Logo editor** from the scene toolbar, or go to **/logo/**. The editor adds
 the fixed Big Feeling wordmark and sphere layout from the supplied reference.
 Literata lettering is pre-outlined and cannot be edited.
-Adjust the sphere's three colors, direction, balance, saturation, highlight, edge softness,
-and grain; the preview updates immediately. Colors support pickers and six-digit
+Adjust the sphere's three colors, direction, balance, highlight, and edge softness;
+the preview updates immediately. Colors support pickers and six-digit
 hex inputs, and every slider has a numeric input for exact values. **Reset sphere**
 restores the sphere and hatch defaults while preserving background and export
 preferences. Hatch controls appear when **Apply to sphere** is enabled.
-**Saturation** ranges from 0% (grayscale source) to 200%, with 100% preserving the
-original colors. It adjusts the sphere's gradient before the crosshatch effect
-generates its colored ink strokes. It saves with the logo settings and is included
-in both SVG and PNG exports.
+Saturation is fixed at 100%. Grain is always 0 with cross-hatch enabled and 8%
+for the smooth sphere, including when restoring older settings and rendering
+SVG or PNG exports.
 
 The preview sphere alone has a CSS `sepia(0.33)` filter. The SVG wordmark and
 page remain unfiltered; this display filter is not baked into exported images.
@@ -308,12 +307,11 @@ normal view. Effect settings are retained when switching modes and across reload
 | Scale | 0.1–2 | 1.5 |
 | Thickness | 0–3 | 1 |
 | Contour | 0–10; 0 disables outlines | 4 |
-| Black | 0–1 | 0.2 |
-| Ink color | Color picker | Black |
 | Edge fade (Christmas scene) | 0–50%; 0 disables the fade | 16% |
 
-Cyan, Magenta, and Yellow weights are fixed at 1 in both editors, including when
-restoring older saved settings.
+Cyan, Magenta, and Yellow weights are fixed at 1, Black at 0, and ink color at
+its black default in both editors, including when restoring older saved settings.
+Black and ink color have no editable controls.
 
 **Reset effect** restores the demo's defaults. The effect uses the existing scene's
 colors and lighting with CMYK lines and normal-based contours. The demo's separate
@@ -447,7 +445,7 @@ The page wrapper uses the captured styles and a local copy of the original sandb
   of orbit, pan, zoom, import, and resize. State checks cover JSON/cookie round trips,
   invalid imports, range normalization, load restoration, and page-exit saving.
 - `npm run build`: Vite production build passes.
-- Chrome: effect toggling, all slider limits, ink color, reset,
+- Chrome: effect toggling, all slider limits, reset,
   retained settings, and train animation verified; the production build
   rendered without shader or console errors.
 - The production view and controls fit a 390 px viewport without horizontal overflow.

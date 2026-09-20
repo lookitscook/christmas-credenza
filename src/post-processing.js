@@ -4,7 +4,6 @@ import { DEFAULT_PAGE_BACKGROUND } from './page-background.js';
 export function createPostProcessing(renderer, root, invalidate, panels, backgroundColor = DEFAULT_PAGE_BACKGROUND) {
   const select = root.querySelector('[data-action="effect"]');
   const grid = root.querySelector('[data-hatch-sliders]');
-  const ink = root.querySelector('[data-hatch-ink]');
   const params = { ...SCENE_HATCH_DEFAULTS };
   const controls = new Map();
   let effect = null;
@@ -40,7 +39,6 @@ export function createPostProcessing(renderer, root, invalidate, panels, backgro
     control.append(caption, output, input);
     grid.append(control);
   }
-  ink.value = params.inkColor;
 
   function setEffect(name, openPanel = false) {
     select.value = name;
@@ -50,21 +48,12 @@ export function createPostProcessing(renderer, root, invalidate, panels, backgro
       effect = new CrossHatchEffect(renderer, { backgroundColor });
       effect.setSize(width, height);
       for (const { key } of SCENE_HATCH_SLIDERS) effect.setParameter(key, params[key]);
-      effect.setParameter('inkColor', params.inkColor);
     }
     invalidate();
   }
   select.addEventListener('change', () => setEffect(select.value, true));
-  ink.addEventListener('input', () => {
-    params.inkColor = ink.value;
-    effect?.setParameter('inkColor', params.inkColor);
-    invalidate();
-  });
   function setParameters(values) {
     for (const [key, update] of controls) update(values[key] ?? SCENE_HATCH_DEFAULTS[key]);
-    params.inkColor = values.inkColor;
-    ink.value = params.inkColor;
-    effect?.setParameter('inkColor', params.inkColor);
     invalidate();
   }
   root.querySelector('[data-action="reset-hatch"]').addEventListener('click', () => setParameters(SCENE_HATCH_DEFAULTS));

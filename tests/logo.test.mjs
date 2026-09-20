@@ -22,21 +22,22 @@ test('logo shares the complete credenza defaults and safely restores partial set
     { hatchEnabled: 'true' }, { exportScale: 100 }]) assert.throws(() => readLogoSettings(bad));
 });
 
-test('logo saturation restores older settings unchanged and validates saved amounts', () => {
-  const old = { ...LOGO_DEFAULTS, color1: '#123456' };
-  delete old.saturation;
-  assert.deepEqual(readLogoSettings(old), { ...old, saturation: 100 });
-  for (const [input, expected] of [[0, 0], [45, 45], [175, 175], [-5, 0], [250, 200]]) {
-    const settings = readLogoSettings({ saturation: input });
-    assert.equal(settings.saturation, expected);
+test('retired logo controls keep their defaults when restoring older settings', () => {
+  for (const input of [0, 45, 175, -5, 250, NaN, Infinity, null, 'obsolete']) {
+    const settings = readLogoSettings({ saturation: input, grain: input, inkColor: input, black: input, color1: '#123456' });
+    assert.equal(settings.saturation, 100);
+    assert.equal(settings.grain, 8);
+    assert.equal(settings.black, 0);
+    assert.equal(settings.inkColor, '#000000');
+    assert.equal(settings.color1, '#123456');
     assert.deepEqual(readLogoSettings(JSON.parse(JSON.stringify(settings))), settings);
   }
-  for (const saturation of [NaN, Infinity, null, '50%']) assert.throws(() => readLogoSettings({ saturation }), /saturation/);
 });
 
-test('preview and export adjust the source sphere saturation before crosshatching', () => {
+test('preview and export use fixed saturation and grain even with legacy settings', () => {
   const sphere = Object.create(LogoSphere.prototype);
   sphere.uniforms = Object.fromEntries(SPHERE_CONTROLS.map(({ key }) => [key, { value: 0 }]));
+  for (const key of ['saturation', 'grain']) sphere.uniforms[key] = { value: 0 };
   for (const key of ['color1', 'color2', 'color3']) sphere.uniforms[key] = { value: new THREE.Color() };
   let rendered, sourceSaturation, dimensions;
   function capture(mode) { rendered = mode; sourceSaturation = sphere.uniforms.saturation.value; }
@@ -51,9 +52,10 @@ test('preview and export adjust the source sphere saturation before crosshatchin
   for (const saturation of [0, 100, 175]) {
     for (const hatchEnabled of [false, true]) {
       for (const scale of [1, 3]) {
-        sphere.render({ saturation, hatchEnabled }, scale);
+        sphere.render({ saturation, grain: 25, hatchEnabled }, scale);
         assert.equal(rendered, hatchEnabled ? 'hatch' : 'smooth');
-        assert.equal(sourceSaturation, saturation / 100);
+        assert.equal(sourceSaturation, 1);
+        assert.equal(sphere.uniforms.grain.value, hatchEnabled ? 0 : .08);
         assert.deepEqual(dimensions, [LOGO_WIDTH * scale, LOGO_HEIGHT * scale]);
       }
     }
@@ -70,7 +72,7 @@ test('restored logo settings always use full CMY weights and preserve other cont
     assert.equal(settings.cyan, 1);
     assert.equal(settings.magenta, 1);
     assert.equal(settings.yellow, 1);
-    assert.equal(settings.black, .35);
+    assert.equal(settings.black, 0);
     assert.equal(settings.scale, 1.2);
   }
 });

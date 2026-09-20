@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Editor settings snapshot</title>
+<pre id="settings"></pre>
+<script>
+const logoKey = 'christmas-credenza-logo-v1';
+const sceneKey = 'christmas_credenza_state_v1';
+const cookie = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith(sceneKey + '='));
+document.getElementById('settings').textContent = JSON.stringify({
+  logo: JSON.parse(localStorage.getItem(logoKey) || 'null'),
+  scene: JSON.parse(cookie ? decodeURIComponent(cookie.slice(sceneKey.length + 1)) : localStorage.getItem(sceneKey) || 'null')
+}, null, 2);
+</script>

@@ -4,20 +4,18 @@ import { DEFAULT_PAGE_BACKGROUND } from './page-background.js';
 // Adapted from spite/sketch/post-cross-hatch-ii (MIT).
 // Source and license: ../vendor/cross-hatch/README.md and LICENSE.txt.
 export const HATCH_FIXED_CMY = Object.freeze({ cyan: 1, magenta: 1, yellow: 1 });
+export const HATCH_FIXED_PARAMETERS = Object.freeze({ ...HATCH_FIXED_CMY, black: 0, inkColor: '#000000' });
 export const HATCH_DEFAULTS = Object.freeze({
   scale: 1.5,
   thickness: 1,
   contour: 4,
-  ...HATCH_FIXED_CMY,
-  black: 0.2,
-  inkColor: '#000000',
+  ...HATCH_FIXED_PARAMETERS,
 });
 
 export const HATCH_SLIDERS = Object.freeze([
   { key: 'scale', label: 'Scale', min: 0.1, max: 2 },
   { key: 'thickness', label: 'Thickness', min: 0, max: 3 },
   { key: 'contour', label: 'Contour', min: 0, max: 10 },
-  { key: 'black', label: 'Black', min: 0, max: 1 },
 ]);
 
 // The logo uses its sphere's own soft edge instead of a viewport fade.
@@ -183,6 +181,7 @@ export class CrossHatchEffect {
       displayColorInput: { value: displayColorInput },
       edgeFade: { value: edgeFade },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
+      black: { value: HATCH_DEFAULTS.black },
     };
     for (const { key } of HATCH_SLIDERS) this.uniforms[key] = { value: HATCH_DEFAULTS[key] };
     this.material = new THREE.RawShaderMaterial({
@@ -202,14 +201,9 @@ export class CrossHatchEffect {
   }
 
   setParameter(key, value) {
-    if (key === 'inkColor') {
-      // The picker and final composite both use display-space RGB.
-      this.uniforms.inkColor.value.set(value).convertLinearToSRGB();
-    } else {
-      const slider = SCENE_HATCH_SLIDERS.find(slider => slider.key === key);
-      if (slider && Number.isFinite(value)) {
-        this.uniforms[key].value = THREE.MathUtils.clamp(value, slider.min, slider.max);
-      }
+    const slider = SCENE_HATCH_SLIDERS.find(slider => slider.key === key);
+    if (slider && Number.isFinite(value)) {
+      this.uniforms[key].value = THREE.MathUtils.clamp(value, slider.min, slider.max);
     }
   }
 

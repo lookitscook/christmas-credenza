@@ -11,7 +11,7 @@ function fixture() {
     train: { running: true, position: 2.45, wheelTravel: 25.62 },
     tv: { enabled: false, currentTime: 12.375 },
     crt: { enabled: false, parameters: { ...CRT_DEFAULTS, brightness: 1.43 } },
-    effect: 'cross-hatch', hatch: { ...SCENE_HATCH_DEFAULTS, inkColor: '#336699' },
+    effect: 'cross-hatch', hatch: { ...SCENE_HATCH_DEFAULTS },
     panels: { crt: false, hatch: true },
   };
 }
@@ -46,7 +46,6 @@ test('invalid imports are rejected and numeric limits are normalized', () => {
     state => { state.camera.target = [0, null, 0]; },
     state => { state.tv.currentTime = Infinity; },
     state => { state.crt.enabled = 'false'; },
-    state => { state.hatch.inkColor = '<script>'; },
     state => { state.effect = 'unknown'; },
   ]) {
     const state = fixture(); change(state);
@@ -96,17 +95,16 @@ test('edge fade round trips, defaults for older saves, and rejects invalid value
   }
 });
 
-test('scene imports and cookies normalize retired CMY controls to 1', () => {
+test('scene imports and cookies normalize retired CMYK and ink controls', () => {
   const expected = fixture();
-  expected.hatch.black = .35;
   expected.hatch.scale = 1.2;
   for (const saved of [
-    { cyan: 0, magenta: .25, yellow: .75 },
-    { cyan: null, magenta: 'obsolete', yellow: -5 },
+    { cyan: 0, magenta: .25, yellow: .75, black: .35, inkColor: '#336699' },
+    { cyan: null, magenta: 'obsolete', yellow: -5, black: 'obsolete', inkColor: '<script>' },
     {},
   ]) {
     const legacy = structuredClone(expected);
-    for (const key of ['cyan', 'magenta', 'yellow']) delete legacy.hatch[key];
+    for (const key of ['cyan', 'magenta', 'yellow', 'black', 'inkColor']) delete legacy.hatch[key];
     Object.assign(legacy.hatch, saved);
     assert.deepEqual(parseSceneState(JSON.stringify(legacy)), expected);
     const doc = withCookie(cookieDocument());
