@@ -39,6 +39,9 @@ Big Feeling logo, the live Christmas scene, and the same interactive PAD sphere
 as the editors. Navigation sits on the left on desktop and across the top on
 mobile. The sphere sits in a circular opening near the image's lower right on
 desktop and at its bottom center on mobile.
+The homepage's intensity ring has its gap and emotion picker at the top. Its
+opening has a flat section above the picker, and the image clearance and hatch
+feather scale proportionally with the sphere on desktop and mobile.
 
 The opening fades ink density in the shared cross-hatch shader before drawing
 strokes, so hatching runs naturally into the page background. Its position and

@@ -31,10 +31,10 @@
         <div class="scene-stage" role="img" aria-label="A cross-hatched Christmas scene: a wooden credenza, a vintage television playing a silent looping video, a table lamp, a blue model train, and a tree with colored lights and a golden star.">
           <p class="scene-message" role="status">Preparing the Christmas scene…</p>
         </div>
-        <div id="pad-stage" class="pad-stage" role="group" aria-label="Explore how you feel">
+        <div id="pad-stage" class="pad-stage" data-pad-controls="top" role="group" aria-label="Explore how you feel">
           <span class="home-cutout" data-scene-cutout aria-hidden="true"></span>
           <p class="pad-message" id="pad-message" role="status">Preparing the sphere…</p>
-          <div class="pad-picker">
+          <div class="pad-picker" data-scene-cutout-control>
             <label for="pad-landmark-picker">Explore emotions</label>
             <select id="pad-landmark-picker"><option value="">Choose an emotion…</option></select>
           </div>
@@ -56,7 +56,7 @@
       <span id="pad-color-swatch" aria-hidden="true"></span>
       <output id="pad-color-value" aria-label="Selected YUV color in sRGB hexadecimal" aria-live="off">—</output>
       <output id="pad-values" aria-label="PAD values and intensity" aria-live="off">P 0.00 · A 0.00 · D 0.00</output>
-      <p id="pad-help">Drag the sphere to explore emotions. Four nearby labels appear while dragging; release to select the nearest emotion. The outer ring changes intensity from low on the left to high on the right. Choose an emotion with the dropdown, or double-click the sphere to reset.</p>
+      <p id="pad-help">Drag the sphere to explore emotions. Four nearby labels appear while dragging; release to select the nearest emotion. The outer ring changes intensity from low on the left to high on the right; the top gap is inactive. Choose an emotion with the dropdown above the sphere, or double-click the sphere to reset.</p>
       <p id="pad-keyboard-help">Arrow keys rotate. Plus and minus change intensity. Home returns to neutral.</p>
     </div>
     <noscript>Enable JavaScript to view the Christmas scene and explore the emotion sphere.</noscript>

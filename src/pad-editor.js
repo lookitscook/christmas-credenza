@@ -14,6 +14,10 @@ document.getElementById('pad-landmark-count').textContent = `${PAD_EMOTIONS.leng
 applyPageBackground(readPageBackground());
 
 function createSelector() {
+  // Flip only the intensity control, keeping the globe and its PAD axes intact.
+  const ringVerticalSign = stage.dataset?.padControls === 'top' ? -1 : 1;
+  const intensityAngle = value => ringVerticalSign * ringAngle(value);
+  const intensityAt = (x, y) => ringIntensity(x, ringVerticalSign * y);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -107,8 +111,8 @@ function createSelector() {
   ringElement.setAttribute('viewBox', '-1 -1 2 2');
   ringElement.setAttribute('aria-hidden', 'true');
   const ringPath = document.createElementNS(svgNamespace, 'path');
-  const lowAngle = ringAngle(0), highAngle = ringAngle(1);
-  ringPath.setAttribute('d', `M ${Math.cos(lowAngle)} ${-Math.sin(lowAngle)} A 1 1 0 1 1 ${Math.cos(highAngle)} ${-Math.sin(highAngle)}`);
+  const lowAngle = intensityAngle(0), highAngle = intensityAngle(1);
+  ringPath.setAttribute('d', `M ${Math.cos(lowAngle)} ${-Math.sin(lowAngle)} A 1 1 0 1 ${ringVerticalSign > 0 ? 1 : 0} ${Math.cos(highAngle)} ${-Math.sin(highAngle)}`);
   ringElement.appendChild(ringPath);
   stage.appendChild(ringElement);
   // The knob's CSS outline also stays exactly one pixel at every viewport size.
@@ -266,7 +270,7 @@ function createSelector() {
   const selectedDirection = new THREE.Vector3(initialEmotion.p, initialEmotion.a, initialEmotion.d).normalize();
   group.quaternion.setFromUnitVectors(selectedDirection, front);
   function update(render = true) {
-    const angle = ringAngle(intensity);
+    const angle = intensityAngle(intensity);
     knobPosition.set(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0);
     camera.updateMatrixWorld();
     const knobCenter = knobPosition.clone().project(camera);
@@ -337,8 +341,8 @@ function createSelector() {
   function overIntensityControl(event, rect = canvas.getBoundingClientRect()) {
     const x = event.clientX - rect.left - rect.width / 2;
     const y = rect.top + rect.height / 2 - event.clientY;
-    const onArc = Math.abs(Math.hypot(x, y) - ringScreenRadius) <= 6 && ringIntensity(x, y) !== null;
-    const angle = ringAngle(intensity);
+    const onArc = Math.abs(Math.hypot(x, y) - ringScreenRadius) <= 6 && intensityAt(x, y) !== null;
+    const angle = intensityAngle(intensity);
     const onKnob = Math.hypot(x - Math.cos(angle) * ringScreenRadius, y - Math.sin(angle) * ringScreenRadius)
       <= Math.max(6, ringScreenRadius * .075 / ringRadius);
     return onArc || onKnob;
@@ -350,7 +354,7 @@ function createSelector() {
   canvas.addEventListener('pointerleave', () => canvas.classList.toggle('is-over-intensity', false), options);
   function changeIntensity(event) {
     const rect = canvas.getBoundingClientRect();
-    const next = ringIntensity(event.clientX - rect.left - rect.width / 2, rect.top + rect.height / 2 - event.clientY);
+    const next = intensityAt(event.clientX - rect.left - rect.width / 2, rect.top + rect.height / 2 - event.clientY);
     if (next === null) return;
     intensity = next;
     update();

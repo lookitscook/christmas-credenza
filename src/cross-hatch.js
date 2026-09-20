@@ -50,6 +50,8 @@ const fragmentShader = `
   uniform float black;
   uniform float edgeFade;
   uniform vec4 circleCutout;
+  uniform vec4 cutoutBox;
+  uniform float cutoutBoxPadding;
   uniform bool transparentBackground;
   uniform bool displayColorInput;
   varying vec2 vUv;
@@ -132,8 +134,16 @@ const fragmentShader = `
       // Normalized center, radius, and feather keep it circular at every DPR.
       float unit = min(resolution.x, resolution.y);
       float distanceFromCenter = length((vUv - circleCutout.xy) * resolution);
-      cmy *= smoothstep(circleCutout.z * unit,
-        (circleCutout.z + circleCutout.w) * unit, distanceFromCenter);
+      float cutoutDistance = distanceFromCenter - circleCutout.z * unit;
+      if (cutoutBox.z > 0.0 && cutoutBox.w > 0.0) {
+        // Union the circle with the dropdown's padded rectangle. Its straight
+        // top and rounded outer corners receive the same ink-density feather.
+        vec2 q = abs((vUv - cutoutBox.xy) * resolution) - cutoutBox.zw * unit;
+        float boxDistance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0)
+          - cutoutBoxPadding * unit;
+        cutoutDistance = min(cutoutDistance, boxDistance);
+      }
+      cmy *= smoothstep(0.0, circleCutout.w * unit, cutoutDistance);
     }
     float key = min(cmy.x, min(cmy.y, cmy.z));
     vec2 uv = scale * vUv;
@@ -191,6 +201,8 @@ export class CrossHatchEffect {
       displayColorInput: { value: displayColorInput },
       edgeFade: { value: edgeFade },
       circleCutout: { value: new THREE.Vector4(0, 0, 0, 0) },
+      cutoutBox: { value: new THREE.Vector4(0, 0, 0, 0) },
+      cutoutBoxPadding: { value: 0 },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
       black: { value: HATCH_DEFAULTS.black },
     };
@@ -223,11 +235,23 @@ export class CrossHatchEffect {
   }
 
   setCircleCutout(cutout = null) {
-    if (!cutout) this.uniforms.circleCutout.value.set(0, 0, 0, 0);
+    if (!cutout) {
+      this.uniforms.circleCutout.value.set(0, 0, 0, 0);
+      this.uniforms.cutoutBox.value.set(0, 0, 0, 0);
+      this.uniforms.cutoutBoxPadding.value = 0;
+    }
     else {
       const { x, y, radius, feather } = cutout;
       if (![x, y, radius, feather].every(Number.isFinite)) return;
       this.uniforms.circleCutout.value.set(x, y, Math.max(0, radius), Math.max(.00001, feather));
+      const box = cutout.box;
+      if (box && [box.x, box.y, box.halfWidth, box.halfHeight, box.padding].every(Number.isFinite)) {
+        this.uniforms.cutoutBox.value.set(box.x, box.y, Math.max(0, box.halfWidth), Math.max(0, box.halfHeight));
+        this.uniforms.cutoutBoxPadding.value = Math.max(0, box.padding);
+      } else {
+        this.uniforms.cutoutBox.value.set(0, 0, 0, 0);
+        this.uniforms.cutoutBoxPadding.value = 0;
+      }
     }
   }
 

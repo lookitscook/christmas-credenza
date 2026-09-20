@@ -49,6 +49,22 @@ test('circular ink-density opening is opt-in and can be resized or cleared witho
   effect.dispose();
 });
 
+test('the optional flat control opening resets together with the circle', () => {
+  const { effect } = fixture();
+  const circle = { x: .8, y: 0, radius: .3, feather: .05 };
+  const box = { x: .8, y: .3, halfWidth: .1, halfHeight: .025, padding: .02 };
+  effect.setCircleCutout({ ...circle, box });
+  assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [.8, .3, .1, .025]);
+  assert.equal(effect.uniforms.cutoutBoxPadding.value, .02);
+  effect.setCircleCutout(circle);
+  assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [0, 0, 0, 0]);
+  effect.setCircleCutout({ ...circle, box });
+  effect.setCircleCutout(null);
+  assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [0, 0, 0, 0]);
+  assert.equal(effect.uniforms.cutoutBoxPadding.value, 0);
+  effect.dispose();
+});
+
 for (const failNormalPass of [false, true]) {
   test(`render restores scene and renderer state${failNormalPass ? ' after an error' : ''}`, () => {
     const { renderer, scene, effect, sprite, line, invisible, glow, cabinet, bulb, socket, originalTarget } = fixture();

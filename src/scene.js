@@ -8,6 +8,7 @@ const stage = root.querySelector('.scene-stage');
 const message = root.querySelector('.scene-message');
 const presentation = root.hasAttribute('data-presentation');
 const cutout = root.querySelector('[data-scene-cutout]');
+const cutoutControl = root.querySelector('[data-scene-cutout-control]');
 try {
   const THREE = await import('../vendor/three.module.js');
   const { createPostProcessing } = await import('./post-processing.js');
@@ -310,7 +311,15 @@ try {
     postProcessing.setSize(drawingSize.x,drawingSize.y);
     if(cutout){
       const feather=parseFloat(getComputedStyle(cutout).getPropertyValue('--scene-cutout-feather'));
-      postProcessing.setCircleCutout(sceneCircleCutout(stage.getBoundingClientRect(),cutout.getBoundingClientRect(),Number.isFinite(feather)?feather:28));
+      const circleRect=cutout.getBoundingClientRect();
+      const widget=cutout.closest('.pad-stage');
+      const ringRect=widget?.querySelector('.pad-intensity-ring')?.getBoundingClientRect();
+      // 276px is the desktop reference size. Scale both the clear margin and
+      // hatch feather together so mobile has the same proportional spacing.
+      const sizeScale=widget?widget.getBoundingClientRect().width/276:1;
+      const padding=ringRect?Math.max(0,(circleRect.width-ringRect.width)/2):0;
+      const control=cutoutControl?{rect:cutoutControl.getBoundingClientRect(),padding}:null;
+      postProcessing.setCircleCutout(sceneCircleCutout(stage.getBoundingClientRect(),circleRect,(Number.isFinite(feather)?feather:28)*sizeScale,control));
     }
     camera.aspect=w/h;
     // Preserve the scene's horizontal composition in a portrait hero instead
@@ -318,7 +327,7 @@ try {
     if(presentation)camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(18))*Math.max(1,1.7/camera.aspect)));
     camera.updateProjectionMatrix();cameraRig.resize();invalidate();persistence?.scheduleSave();
   }
-  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);if(cutout)resizeObserver.observe(cutout);resize();
+  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);if(cutout)resizeObserver.observe(cutout);if(cutoutControl)resizeObserver.observe(cutoutControl);resize();
   const cameraControls=presentation?null:attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
   root.querySelector('[data-action="reset-view"]')?.addEventListener('click',()=>{cameraRig.setState(CAMERA_DEFAULTS);invalidate();});
   let prevTime=0,trainFrame=null;

@@ -6,7 +6,7 @@ import * as THREE from '../vendor/three.module.js';
 import * as model from '../src/pad-model.js';
 
 // Run the real controls with real Three geometry/raycasting and a stub renderer.
-async function selector(reducedMotion = false, width = 600, height = 600) {
+async function selector(reducedMotion = false, width = 600, height = 600, controlsPosition = 'bottom') {
   const frames = new Map();
   let nextFrame = 0, now = 0, scene;
   function element() {
@@ -46,6 +46,7 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
     .map(id => [id, element()]));
   elements['pad-stage'].clientWidth = width;
   elements['pad-stage'].clientHeight = height;
+  elements['pad-stage'].dataset = { padControls: controlsPosition };
   const renderers = [];
   function WebGLRenderer() {
     const renderer = {
@@ -411,6 +412,36 @@ test('the rendered bottom gap cannot start a drag or change intensity during a r
     assert.ok(app.elements['pad-values'].textContent.endsWith(`· ${Math.round(intensity * 100)}%`));
     app.pointer('pointercancel');
   }
+});
+
+test('top controls mirror the knob and pointer mapping, retaining low left, high right, and an inactive top gap', async () => {
+  const app = await selector(true, 600, 600, 'top');
+  const radius = 1.86 * 300 / 2.08;
+  const position = intensity => {
+    const angle = -model.ringAngle(intensity);
+    return [300 + Math.cos(angle) * radius, 300 - Math.sin(angle) * radius];
+  };
+  const original = app.elements['pad-values'].textContent;
+  app.pointer('pointerdown', 300, 300 - radius);
+  app.pointer('pointermove', 320, 300 - radius);
+  app.pointer('pointerup', 320, 300 - radius);
+  assert.equal(app.elements['pad-values'].textContent, original);
+  assert.deepEqual(visibleLabelNames(app), []);
+  const knob = app.elements['pad-stage'].children.find(child => child.className === 'pad-intensity-knob');
+  app.pointer('pointerdown', ...position(.1));
+  for (const intensity of [0, .1, .3, .5, .8, 1]) {
+    const [x, y] = position(intensity);
+    app.pointer('pointermove', x, y);
+    assert.ok(app.elements['pad-values'].textContent.endsWith(`· ${Math.round(intensity * 100)}%`));
+    assert.ok(Math.abs(parseFloat(knob.style.left) - x) < 1e-8);
+    assert.ok(Math.abs(parseFloat(knob.style.top) - y) < 1e-8);
+  }
+  app.pointer('pointermove', 300, 300 - radius);
+  assert.ok(app.elements['pad-values'].textContent.endsWith('· 100%'));
+  app.pointer('pointermove', 300, 300 + radius);
+  assert.ok(app.elements['pad-values'].textContent.endsWith('· 50%'));
+  app.pointer('pointerup', 300, 300 + radius);
+  assertReticleCentered(app);
 });
 
 test('intensity changes preserve the nearest surface emotion and zero-intensity drags snap by direction', async () => {
