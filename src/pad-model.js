@@ -7,14 +7,16 @@ export { PAD_LANDMARKS };
 // Categories and familiarity order are editorial, not study classifications.
 // Supplement the original directions with measured word ratings to fill gaps;
 // never move a landmark or pull unreviewed (including sexual) terms into the UI.
+// Recurated on normalized PAD directions only, keeping 64 terms and reserving
+// Happy, Sad, Angry, Ennui, Fearful, Stoic, and Nostalgic regardless of spacing.
 const EMOTION_NAMES = {
-  positive: ['Happy', 'Kind', 'Secure', 'Bold', 'Humble', 'Protected', 'Impressed', 'Respectful', 'Devoted',
-    'Grateful', 'Reverent', 'Consoled', 'Relaxed', 'Curious', 'Fascinated', 'Awed', 'Excited', 'Inspired', 'Powerful',
-    'Cooperative', 'Free', 'Content', 'Confident', 'Hopeful', 'Patient', 'Successful', 'Nostalgic', 'Playful', 'Attentive', 'Proud', 'Lucky',
-    'Relief', 'Resolute', 'Resilient', 'Vigorous', 'Dignified', 'Empathy', 'Assertive', 'Affectionate', 'Receptive'],
-  neutral: ['Surprised', 'Overwhelmed', 'Reserved', 'Aloof', 'Quiet', 'Serious', 'Reflective', 'Indifferent',
-    'Sleepy', 'Stoic', 'Anticipation', 'Indulgent', 'Emotional'],
-  negative: ['Sad', 'Angry', 'Ennui', 'Frustrated', 'Timid', 'Dissatisfied', 'Defiant', 'Anxious', 'Confused', 'Selfish', 'Repentant'],
+  positive: ['Happy', 'Kind', 'Secure', 'Bold', 'Humble', 'Sheltered', 'Impressed', 'Respectful', 'Devoted',
+    'Appreciative', 'Reverent', 'Consoled', 'Curious', 'Fascinated', 'Awed', 'Excited', 'Inspired', 'Powerful',
+    'Cooperative', 'Carefree', 'Content', 'Confident', 'Hopeful', 'Patient', 'Triumphant', 'Nostalgic', 'Humorous', 'Attentive', 'Proud',
+    'Relief', 'Resolute', 'Resilient', 'Dignified', 'Empathy', 'Assertive', 'Loved', 'Sensitive', 'Understanding', 'Alert', 'Friendly'],
+  neutral: ['Startled', 'Overwhelmed', 'Reserved', 'Aloof', 'Quiet', 'Solemn', 'Reflective', 'Indifferent',
+    'Sleepy', 'Stoic', 'Nonchalant', 'Indulgent', 'Emotional'],
+  negative: ['Sad', 'Angry', 'Ennui', 'Fearful', 'Timid', 'Defeated', 'Defiant', 'Disgusted', 'Disdainful', 'Selfish', 'Repentant'],
 };
 const emotionKinds = new Map(Object.entries(EMOTION_NAMES).flatMap(([kind, names]) => names.map(name => [name, kind])));
 const emotionSources = new Map();

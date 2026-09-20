@@ -174,15 +174,16 @@ on narrow screens.
 
 The selector uses **40 positive, 11 negative, and 13 neutral/mixed moods**, keeping
 roughly the requested 4:1 positive-to-negative mix across its vocabulary. Happy,
-Sad, Angry, and Ennui are retained. The reviewed allowlist
+Sad, Angry, Ennui, Fearful, Stoic, and Nostalgic are reserved. Fearful retains its
+original 1977 name and coordinates; it is not relabeled Afraid. The reviewed allowlist
 in `src/pad-model.js` excludes sexual terms, including Aroused. Mood categories
 and familiarity order are editorial choices, not classifications from the studies.
 The dropdown is alphabetical. Near-synonyms are consolidated, preferring the
-1977 entry. Examples include Grateful/Thankful, Relaxed/Calm/Mellow, Surprised/Astonished, and
-Sleepy/Drowsy. Anxious and Confused use the original paper rather than the later
-Anxiety and Bewildered ratings. Point tooltips identify the source year and term.
+1977 entry. Examples include Appreciative over Grateful/Thankful, Startled over
+Surprised/Astonished, Loved over Love/Affectionate, and Sleepy over Drowsy.
+Point tooltips identify the source year and term.
 Overwhelmed uses its 1977 values `(0.14, 0.45, −0.24)` to cover a less crowded
-direction; Love's direction sits close to Fascinated and is not reserved a slot.
+direction. Loved fills a distinct direction without being reserved a slot.
 
 Up to **20 points** appear on both desktop and narrow screens, with labels only
 for the **four nearest the reticle along the globe's surface** during an active drag.
@@ -209,19 +210,20 @@ reduced-motion preferences disable the fade.
 
 The measured positions are preserved. The per-view mix follows the visible
 hemisphere rather than imposing quotas that would leave gaps; some views have
-fewer than 20 front-facing points. The expanded vocabulary uses **44 original
-landmarks and 20 supplementary word ratings** to improve angular coverage.
+fewer than 20 front-facing points. The vocabulary uses **45 original
+landmarks and 19 supplementary word ratings** to improve angular coverage.
 
-The additions to the 52-term set were chosen for distinct meanings and spatial
-coverage, favoring 1977 entries when angular separation was comparable:
+The 64-term set was recalculated using great-circle distances between normalized
+PAD vectors, excluding intensity. Selection reserves the seven required moods,
+fills larger surface gaps, avoids near-synonyms and crowded directions, and
+favors 1977 entries when coverage is comparable. Humorous, Sensitive, and
+Understanding add three verified supplemental directions.
 
-- 1977: Affectionate, Dignified, Repentant, Selfish, Vigorous.
-- Supplemental: Assertive, Emotional, Empathy, Receptive, Relief, Resilient, Resolute.
-
-A check across 5,000 uniformly distributed directions reduces the largest sampled
-gap to a landmark from **41.2° to 36.4°**, and the share of directions more than
-30° from a landmark from **6.02% to 1.78%**. These checks use the actual measured
-directions; no coordinates are shifted to force an even distribution.
+Compared with the previous 64-term set, a check across 5,000 uniformly distributed
+directions reduces the largest sampled gap to a landmark from **36.4° to 33.2°**,
+and the share of directions more than 30° from a landmark from **1.78% to 0.64%**.
+The minimum separation between any two selected landmarks increases from
+**2.87° to 5.92°**. All source coordinates and intensities remain unchanged.
 
 Click a point or label, or use **Explore emotions**, to select any of the 64 exact landmarks,
 including its intensity. Snapping and emotion readouts use this same curated set.
@@ -250,7 +252,7 @@ The file retains each original word, CSV ID, and aggregate `V.Mean.Sum`,
 `A.Mean.Sum`, and `D.Mean.Sum` from the publisher's `BRM-emot-submit.csv` supplement.
 Each 1–9 mean becomes `(mean − 5) / 4` on [-1, +1], with valence used as pleasure.
 For example, Content's means `(6.70, 3.17, 5.92)` map to PAD `(0.425, −0.4575, 0.23)`.
-The file preserves the 32 imported rows for provenance; only 20 distinct
+The file preserves the 35 imported rows for provenance; only 19 distinct
 supplemental concepts remain selectable. Existing 1977 terms keep their original
 values and names. Sources:
 [paper](https://doi.org/10.3758/s13428-012-0314-x),

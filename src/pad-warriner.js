@@ -38,6 +38,9 @@ export const WARRINER_RATINGS = Object.freeze([
   ['empathy', 4055, 7.29, 3.62, 5.90],
   ['assertive', 658, 5.37, 5.55, 6.04],
   ['receptive', 9947, 6.32, 3.90, 5.46],
+  ['humorous', 6001, 7.81, 5.33, 6.80],
+  ['sensitive', 10922, 6.33, 3.68, 5.00],
+  ['understanding', 13041, 7.14, 3.09, 7.31],
 ].map(Object.freeze));
 
 // Map 1–9 to -1–+1, with valence as pleasure. Retain all source precision;

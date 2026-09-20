@@ -37,7 +37,7 @@ test('curated emotion landmarks retain their PAD values and zero intensity is ne
   for (const [name, p, a, d] of PAD_EMOTIONS) assert.equal(padEmotion({ p, a, d }), name);
   assert.equal(padEmotion(dirToPad({ x: .55, y: .42, z: .25 }, .68)), 'Inspired');
   assert.equal(padEmotion(dirToPad({ x: -.8, y: .2, z: .5 }, 0)), 'Neutral');
-  assert.equal(padEmotion({ p: -.75, a: -.5, d: .5 }), 'PAD');
+  assert.equal(padEmotion({ p: -1, a: -.5, d: 1 }), 'PAD');
 });
 
 test('PAD colors remain clipped and the neutral source color stays gray', () => {
@@ -89,11 +89,11 @@ test('snapping finds the closest landmark even outside the emotion display thres
     const result = dirToPad(direction, intensity);
     assert.ok(Math.hypot(result.p - p, result.a - a, result.d - d) < 1e-12);
   }
-  const distant = { p: -.75, a: -.5, d: .5 };
+  const distant = { p: -1, a: -.5, d: 1 };
   assert.equal(padEmotion(distant), 'PAD');
-  assert.equal(nearestPadEmotion(distant).name, 'Stoic');
+  assert.equal(nearestPadEmotion(distant).name, 'Selfish');
   assert.equal(nearestPadEmotion({ p: .8, a: .5, d: .45 }).name, 'Happy');
-  assert.equal(nearestPadEmotion({ p: .75, a: .47, d: .34 }).name, 'Lucky');
+  assert.equal(nearestPadEmotion({ p: .75, a: .47, d: .34 }).name, 'Happy');
 });
 
 test('surface-nearest emotions and readouts ignore intensity and keep measured coordinates', () => {
@@ -125,7 +125,10 @@ test('surface-nearest emotions and readouts ignore intensity and keep measured c
 test('the curated allowlist retains anchors and roughly a 4:1 mix, with no sexual terms', () => {
   assert.equal(PAD_EMOTIONS.length, 64);
   assert.equal(new Set(PAD_EMOTIONS.map(([name]) => name)).size, PAD_EMOTIONS.length);
-  for (const name of ['Happy', 'Sad', 'Angry', 'Ennui']) assert.ok(PAD_EMOTIONS.some(row => row[0] === name));
+  for (const name of ['Happy', 'Sad', 'Angry', 'Ennui', 'Fearful', 'Stoic', 'Nostalgic']) {
+    assert.ok(PAD_EMOTIONS.some(row => row[0] === name));
+  }
+  assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === 'Fearful'), ['Fearful', -.64, .60, -.43]);
   const count = kind => PAD_EMOTIONS.filter(([name]) => padEmotionKind(name) === kind).length;
   assert.equal(count('positive'), 40);
   assert.equal(count('negative'), 11);
@@ -144,27 +147,37 @@ test('the curated allowlist retains anchors and roughly a 4:1 mix, with no sexua
 test('near-synonyms consolidate under the original landmark values', () => {
   const names = PAD_EMOTIONS.map(([name]) => name);
   for (const group of [
-    ['Grateful', 'Thankful'], ['Humble', 'Modest'],
-    ['Relaxed', 'Calm', 'Mellow', 'Leisurely', 'Untroubled'], ['Excited', 'Ecstatic'],
-    ['Bold', 'Brave'], ['Kind', 'Compassionate'], ['Surprised', 'Astonished'],
-    ['Hopeful', 'Optimistic'], ['Sleepy', 'Drowsy'], ['Anxious', 'Anxiety'], ['Confused', 'Bewildered'],
+    ['Appreciative', 'Grateful', 'Thankful'], ['Humble', 'Modest'],
+    ['Nonchalant', 'Relaxed', 'Calm', 'Mellow', 'Leisurely', 'Untroubled'], ['Excited', 'Ecstatic'],
+    ['Bold', 'Brave'], ['Kind', 'Compassionate'], ['Startled', 'Surprised', 'Astonished'],
+    ['Hopeful', 'Optimistic'], ['Sleepy', 'Drowsy'], ['Fearful', 'Afraid', 'Terrified'],
+    ['Loved', 'Love', 'Loving', 'Inlove', 'Affectionate'], ['Sheltered', 'Protected'],
+    ['Carefree', 'Free'], ['Humorous', 'Playful'], ['Triumphant', 'Successful'],
   ]) assert.deepEqual(group.filter(name => names.includes(name)), [group[0]]);
   assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === 'Overwhelmed'), ['Overwhelmed', .14, .45, -.24]);
-  for (const name of ['Angry', 'Anxious', 'Confused', 'Hopeful', 'Relaxed', 'Overwhelmed',
-    'Selfish', 'Repentant', 'Vigorous', 'Dignified', 'Affectionate']) {
+  for (const name of ['Angry', 'Fearful', 'Hopeful', 'Nonchalant', 'Overwhelmed',
+    'Selfish', 'Repentant', 'Disgusted', 'Dignified', 'Loved', 'Sheltered', 'Triumphant', 'Appreciative']) {
     assert.equal(PAD_EMOTIONS.find(row => row[0] === name), PAD_LANDMARKS.find(row => row[0] === name));
   }
-  assert.equal(PAD_EMOTIONS.filter(([name]) => padEmotionSource(name).year === 1977).length, 44);
+  assert.equal(PAD_EMOTIONS.filter(([name]) => padEmotionSource(name).year === 1977).length, 45);
 });
 
 test('Warriner additions preserve original aggregate ratings and normalize all three axes', () => {
-  assert.equal(WARRINER_RATINGS.length, 32);
+  assert.equal(WARRINER_RATINGS.length, 35);
   assert.deepEqual(WARRINER_RATINGS.find(([word]) => word === 'love'), ['love', 7246, 8, 5.36, 5.92]);
   assert.deepEqual(PAD_WARRINER_LANDMARKS.find(([name]) => name === 'Love'), ['Love', .75, .09, .23]);
   assert.deepEqual(PAD_WARRINER_LANDMARKS.find(([name]) => name === 'Calm'), ['Calm', .4725, -.8325, .61]);
   assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === 'Content'), ['Content', .425, -.4575, .23]);
   assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === 'Emotional'), ['Emotional', .0275, .08, -.125]);
   assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === 'Resolute'), ['Resolute', .2375, -.535, .23]);
+  for (const [record, normalized] of [
+    [['humorous', 6001, 7.81, 5.33, 6.80], ['Humorous', .7025, .0825, .45]],
+    [['sensitive', 10922, 6.33, 3.68, 5.00], ['Sensitive', .3325, -.33, 0]],
+    [['understanding', 13041, 7.14, 3.09, 7.31], ['Understanding', .535, -.4775, .5775]],
+  ]) {
+    assert.deepEqual(WARRINER_RATINGS.find(([word]) => word === record[0]), record);
+    assert.deepEqual(PAD_EMOTIONS.find(([name]) => name === normalized[0]), normalized);
+  }
   for (const [word, id, ...means] of WARRINER_RATINGS) {
     const row = PAD_WARRINER_LANDMARKS.find(([name]) => name.toLowerCase() === word);
     assert.ok(Number.isInteger(id) && id > 0);
@@ -174,16 +187,19 @@ test('Warriner additions preserve original aggregate ratings and normalize all t
   }
 });
 
-test('measured additions shrink gaps across a uniformly sampled globe', () => {
-  // The prior 52-term set is preserved; additions must improve actual coverage
-  // rather than merely adding more points in the same positive cluster.
+test('the revised 64 terms reduce surface gaps and crowding without changing intensity', () => {
+  // Compare equal-size sets using the archived measurements, including terms
+  // replaced in this revision. Normalize every vector so radius cannot help.
   const previousNames = ['Happy', 'Kind', 'Secure', 'Bold', 'Humble', 'Protected', 'Impressed', 'Respectful', 'Devoted',
     'Grateful', 'Reverent', 'Consoled', 'Relaxed', 'Curious', 'Fascinated', 'Awed', 'Excited', 'Inspired', 'Powerful',
     'Cooperative', 'Free', 'Content', 'Confident', 'Hopeful', 'Patient', 'Successful', 'Nostalgic', 'Playful', 'Attentive', 'Proud', 'Lucky',
+    'Relief', 'Resolute', 'Resilient', 'Vigorous', 'Dignified', 'Empathy', 'Assertive', 'Affectionate', 'Receptive',
     'Surprised', 'Overwhelmed', 'Reserved', 'Aloof', 'Quiet', 'Serious', 'Reflective', 'Indifferent', 'Sleepy', 'Stoic', 'Anticipation', 'Indulgent',
-    'Sad', 'Angry', 'Ennui', 'Frustrated', 'Timid', 'Dissatisfied', 'Defiant', 'Anxious', 'Confused'];
-  const original = PAD_EMOTIONS.filter(([name]) => previousNames.includes(name));
-  assert.equal(original.length, 52);
+    'Emotional', 'Sad', 'Angry', 'Ennui', 'Frustrated', 'Timid', 'Dissatisfied', 'Defiant', 'Anxious', 'Confused', 'Selfish', 'Repentant'];
+  const original = previousNames.map(name => PAD_LANDMARKS.find(row => row[0] === name)
+    || PAD_WARRINER_LANDMARKS.find(row => row[0] === name));
+  assert.equal(original.length, 64);
+  assert.ok(original.every(Boolean));
   function gaps(rows) {
     const directions = rows.map(([, p, a, d]) => new THREE.Vector3(p, a, d).normalize());
     return Array.from({ length: 5000 }, (_, i) => {
@@ -193,23 +209,28 @@ test('measured additions shrink gaps across a uniformly sampled globe', () => {
     });
   }
   const before = gaps(original), after = gaps(PAD_EMOTIONS);
-  assert.ok(Math.max(...after) < THREE.MathUtils.degToRad(37));
-  assert.ok(Math.max(...after) < Math.max(...before) * .9);
-  assert.ok(after.reduce((sum, gap) => sum + gap, 0) < before.reduce((sum, gap) => sum + gap, 0) * .9);
+  assert.ok(Math.max(...after) < THREE.MathUtils.degToRad(34));
+  assert.ok(Math.max(...after) < Math.max(...before) * .92);
+  assert.ok(after.reduce((sum, gap) => sum + gap, 0) < before.reduce((sum, gap) => sum + gap, 0) * .95);
   const largeGaps = values => values.filter(gap => gap > THREE.MathUtils.degToRad(30)).length;
-  assert.ok(largeGaps(after) < largeGaps(before) * .35);
+  assert.ok(largeGaps(after) < largeGaps(before) * .4);
+  const directions = PAD_EMOTIONS.map(([, p, a, d]) => new THREE.Vector3(p, a, d).normalize());
+  for (let i = 0; i < directions.length; i++) for (let j = i + 1; j < directions.length; j++) {
+    assert.ok(directions[i].angleTo(directions[j]) > THREE.MathUtils.degToRad(5.9),
+      `${PAD_EMOTIONS[i][0]} and ${PAD_EMOTIONS[j][0]} must leave room for distinct points`);
+  }
 });
 
 test('twenty visible points retain the nearest four, selection, hover, and angular coverage', () => {
   const direction = { x: .55, y: .42, z: .25 };
   const candidates = PAD_EMOTIONS.map(([name], index) => ({ name, x: 300 + index * 2, y: 200 }));
-  const chosen = visiblePadEmotions(candidates, direction, 'Ennui', 'Anxious');
+  const chosen = visiblePadEmotions(candidates, direction, 'Ennui', 'Fearful');
   assert.equal(chosen.length, 20);
   assert.equal(new Set(chosen).size, 20);
-  for (const name of ['Inspired', 'Lucky', 'Happy', 'Affectionate', 'Ennui', 'Anxious']) {
+  for (const name of ['Inspired', 'Happy', 'Friendly', 'Excited', 'Ennui', 'Fearful']) {
     assert.ok(chosen.some(item => item.name === name));
   }
-  assert.deepEqual(nearestPadLabels(chosen, direction).map(item => item.name), ['Inspired', 'Lucky', 'Happy', 'Affectionate']);
+  assert.deepEqual(nearestPadLabels(chosen, direction).map(item => item.name), ['Inspired', 'Happy', 'Friendly', 'Excited']);
   // The low-arousal and negative-dominance poles should get points even when
   // all four reticle neighbors are from the more familiar positive group.
   for (const direction of [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, -1)]) {
@@ -230,7 +251,7 @@ test('labels use surface distance regardless of intensity, screen projection, va
   const direction = new THREE.Vector3(.55, .42, .25);
   const chosen = nearestPadLabels(candidates, direction);
   assert.equal(chosen.length, 4);
-  assert.deepEqual(chosen.map(item => item.name), ['Inspired', 'Lucky', 'Happy', 'Affectionate']);
+  assert.deepEqual(chosen.map(item => item.name), ['Inspired', 'Happy', 'Friendly', 'Excited']);
   assert.deepEqual(nearestPadLabels([...candidates].reverse(), direction), chosen);
   for (const scale of [.001, .1, .5, 1, 10]) {
     assert.deepEqual(nearestPadLabels(candidates, direction.clone().multiplyScalar(scale)), chosen);
