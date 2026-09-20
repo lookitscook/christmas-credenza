@@ -120,6 +120,9 @@ original colors. It adjusts the sphere's gradient before the crosshatch effect
 generates its colored ink strokes. It saves with the logo settings and is included
 in both SVG and PNG exports.
 
+The preview sphere alone has a CSS `sepia(0.33)` filter. The SVG wordmark and
+page remain unfiltered; this display filter is not baked into exported images.
+
 **Apply to sphere** uses the same `CrossHatchEffect` class, GLSL shader, CMYK line
 angles, controls, and normal contours as the credenza. The logo
 opts into ink-only compositing: gaps have zero alpha and reveal the selected
@@ -215,6 +218,9 @@ The surface, reticle, and **YUV color** swatch update together throughout draggi
 and snapping. Each landmark dot uses its own measured PAD color. The swatch also
 shows the sRGB hex value. The sphere evaluates the mapping per pixel at the current
 intensity, avoiding interpolation of clipped vertex colors.
+The globe's color surface then receives a CSS `sepia(0.5)` filter. Mesh lines,
+reticle, intensity controls, landmark points, labels, and the YUV swatch remain
+unfiltered, so the swatch and numeric color still report the exact YUV mapping.
 
 The dataset in `src/pad-landmarks.js` is transcribed from the **Mean** columns in
 Russell & Mehrabian (1977), **Table 4, pp. 286–289**, in original row order. It

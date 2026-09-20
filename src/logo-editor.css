@@ -22,6 +22,7 @@ h2 { margin: 0; font-size: 16px; font-weight: 600; }
 .preview-surround { min-height: 300px; display: grid; place-items: center; }
 .logo-preview { position: relative; width: min(100%, calc((100svh - 250px) * 1169 / 1142)); aspect-ratio: 1169 / 1142; background: transparent; }
 .logo-preview canvas, .logo-preview svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.logo-preview #sphere-preview { filter: sepia(0.33); }
 .logo-preview svg { pointer-events: none; }
 .preview-note { color: var(--page-muted); text-align: center; font-size: 14px; margin: 22px 0 0; }
 .inspector { border-left: 1px solid var(--page-border); min-width: 0; background: var(--page-background); }

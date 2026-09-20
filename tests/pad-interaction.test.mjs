@@ -28,19 +28,37 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
       releasePointerCapture() { this.captured = null; },
     };
   }
-  const canvas = element(), window = element();
+  const window = element();
   window.matchMedia = () => ({ matches: reducedMotion });
   const elements = Object.fromEntries(['pad-stage', 'pad-emotion', 'pad-values', 'pad-message', 'pad-neutral', 'pad-color-swatch', 'pad-color-value', 'pad-landmark-picker', 'pad-landmark-count']
     .map(id => [id, element()]));
   elements['pad-stage'].clientWidth = width;
   elements['pad-stage'].clientHeight = height;
-  const renderer = {
-    domElement: canvas, setClearColor() {}, setPixelRatio() {}, setSize() {}, dispose() {},
-    render(value, camera) { scene = value; scene.updateMatrixWorld(true); camera.updateMatrixWorld(); },
-  };
+  const renderers = [];
+  function WebGLRenderer() {
+    const renderer = {
+      domElement: element(), calls: [], disposed: false,
+      setClearColor() {},
+      setPixelRatio(value) { this.pixelRatio = value; },
+      setSize(width, height) { this.size = [width, height]; },
+      dispose() { this.disposed = true; },
+      render(value, camera) {
+        scene = value; scene.updateMatrixWorld(true); camera.updateMatrixWorld();
+        const objects = [];
+        scene.traverseVisible(object => {
+          if (object.material && object.layers.test(camera.layers)) objects.push({
+            object, colorWrite: object.material.colorWrite, depthWrite: object.material.depthWrite,
+          });
+        });
+        this.calls.push(objects);
+      },
+    };
+    renderers.push(renderer);
+    return renderer;
+  }
   const source = await readFile(new URL('../src/pad-editor.js', import.meta.url), 'utf8');
   vm.runInNewContext(source.replace(/^import .*;\n/gm, ''), {
-    ...model, THREE: { ...THREE, WebGLRenderer: function () { return renderer; } },
+    ...model, THREE: { ...THREE, WebGLRenderer },
     window, document: { getElementById: id => elements[id], createElement: element }, console, AbortController,
     LOGO_STORAGE_KEY: 'test', readPageBackground: () => '#f3f0e6', applyPageBackground: value => value,
     pageForeground: () => '#062627', performance: { now: () => now },
@@ -48,6 +66,7 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
     requestAnimationFrame(callback) { frames.set(++nextFrame, callback); return nextFrame; },
     cancelAnimationFrame(id) { frames.delete(id); },
   });
+  const canvas = renderers.find(renderer => renderer.domElement.className === 'pad-overlay').domElement;
   function tick(time) {
     now = time;
     const callbacks = [...frames.values()]; frames.clear();
@@ -57,7 +76,7 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
   function pointer(type, x = 300, y = 300) {
     canvas.fire(type, { pointerId: 1, button: 0, clientX: x, clientY: y });
   }
-  return { canvas, elements, tick, pointer, frames, group: scene.children[0] };
+  return { canvas, elements, tick, pointer, frames, renderers, window, group: scene.children[0] };
 }
 
 function visibleLabelNames(app) {
@@ -65,6 +84,40 @@ function visibleLabelNames(app) {
   return layer.children.filter(child => child.className === 'pad-landmark-label' && !child.hidden)
     .map(label => label.textContent);
 }
+
+test('globe colors render separately from overlays, retaining sphere depth and synchronized canvases', async () => {
+  const app = await selector();
+  const globe = app.renderers.find(renderer => renderer.domElement.className === 'pad-globe');
+  const overlay = app.renderers.find(renderer => renderer.domElement === app.canvas);
+  const sphere = app.group.children.find(object => object.material?.isShaderMaterial);
+  const marker = app.group.children.find(object => object.geometry?.parameters?.radius === .055);
+  function checkLayers() {
+    assert.deepEqual(globe.calls.at(-1), [{ object: sphere, colorWrite: true, depthWrite: true }]);
+    const overlays = overlay.calls.at(-1);
+    assert.deepEqual(overlays.filter(item => !item.colorWrite), [{ object: sphere, colorWrite: false, depthWrite: true }]);
+    assert.ok(overlays.some(item => item.object === marker && item.colorWrite));
+    assert.ok(overlays.filter(item => item.colorWrite).length >= 6, 'mesh, ring, track, knob, marker and halo remain on the overlay');
+    assert.equal(sphere.material.colorWrite, true, 'restore globe colors for the next frame');
+    assert.deepEqual(globe.size, overlay.size);
+    assert.equal(globe.pixelRatio, overlay.pixelRatio);
+  }
+  checkLayers();
+  app.pointer('pointerdown');
+  app.pointer('pointermove', 340, 325);
+  app.pointer('pointerup', 340, 325);
+  app.tick(210);
+  checkLayers();
+  app.elements['pad-stage'].clientWidth = 320;
+  app.elements['pad-stage'].clientHeight = 280;
+  app.window.fire('resize');
+  app.tick(420);
+  assert.deepEqual(globe.size, [320, 280]);
+  checkLayers();
+  globe.domElement.fire('webglcontextlost');
+  assert.ok(app.renderers.every(renderer => renderer.disposed));
+  assert.equal(app.frames.size, 0);
+  assert.equal(app.elements['pad-message'].hidden, false);
+});
 
 test('drag release eases to an exact emotion and stops rendering when settled', async () => {
   const app = await selector();

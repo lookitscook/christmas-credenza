@@ -17,14 +17,23 @@ function createSelector() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  const canvas = renderer.domElement;
+  const overlayRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderers = [renderer, overlayRenderer];
+  for (const layer of renderers) {
+    layer.setClearColor(0x000000, 0);
+    layer.outputColorSpace = THREE.SRGBColorSpace;
+  }
+  // CSS filters affect an entire canvas. Keep every overlay on a separate,
+  // unfiltered canvas above the globe's color surface.
+  renderer.domElement.className = 'pad-globe';
+  renderer.domElement.setAttribute('aria-hidden', 'true');
+  const canvas = overlayRenderer.domElement;
+  canvas.className = 'pad-overlay';
   canvas.tabIndex = 0;
   canvas.setAttribute('role', 'group');
   canvas.setAttribute('aria-label', 'Interactive PAD sphere');
   canvas.setAttribute('aria-describedby', 'pad-help pad-keyboard-help pad-values');
-  stage.appendChild(canvas);
+  stage.append(renderer.domElement, canvas);
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   let frame = null, disposed = false, snap = null;
@@ -42,7 +51,18 @@ function createSelector() {
         if (progress === 1) snap = null;
         update(false);
       }
-      renderer.render(scene, camera);
+      try {
+        camera.layers.set(1);
+        renderer.render(scene, camera);
+        // Keep the sphere's depth in the overlay pass so rear mesh lines stay
+        // hidden, but draw its color only on the filtered canvas below.
+        camera.layers.set(0);
+        sphere.material.colorWrite = false;
+        overlayRenderer.render(scene, camera);
+      } finally {
+        camera.layers.set(0);
+        sphere.material.colorWrite = true;
+      }
       if (snap) invalidate();
     });
   }
@@ -68,6 +88,7 @@ function createSelector() {
       }`,
     toneMapped: false, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1,
   }));
+  sphere.layers.enable(1);
   group.add(sphere);
 
   const meshLines = new THREE.LineSegments(new THREE.WireframeGeometry(geometry),
@@ -346,8 +367,10 @@ function createSelector() {
   function resize() {
     const width = stage.clientWidth, height = stage.clientHeight;
     if (!width || !height) return;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setSize(width, height, false);
+    for (const layer of renderers) {
+      layer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      layer.setSize(width, height, false);
+    }
     camera.aspect = width / height;
     camera.position.set(0, 0, padCameraDistance(camera.aspect, camera.fov));
     camera.updateProjectionMatrix();
@@ -374,9 +397,9 @@ function createSelector() {
     });
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
-    renderer.dispose();
+    for (const layer of renderers) layer.dispose();
   }
-  canvas.addEventListener('webglcontextlost', event => {
+  for (const layer of renderers) layer.domElement.addEventListener('webglcontextlost', event => {
     event.preventDefault(); dispose(); neutralButton.disabled = true;
     message.hidden = false; message.textContent = 'The graphics connection was lost. Reload to restore the sphere.';
   }, options);
