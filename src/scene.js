@@ -318,8 +318,10 @@ try {
       // hatch feather together so mobile has the same proportional spacing.
       const sizeScale=widget?widget.getBoundingClientRect().width/276:1;
       const padding=ringRect?Math.max(0,(circleRect.width-ringRect.width)/2):0;
-      const control=cutoutControl?{rect:cutoutControl.getBoundingClientRect(),padding}:null;
-      postProcessing.setCircleCutout(sceneCircleCutout(stage.getBoundingClientRect(),circleRect,(Number.isFinite(feather)?feather:28)*sizeScale,control));
+      const fade=(Number.isFinite(feather)?feather:28)*sizeScale;
+      // Tighten only the dropdown opening, including its visible hatch fade.
+      const control=cutoutControl?{rect:cutoutControl.getBoundingClientRect(),padding:padding*4/9,feather:fade*4/9,sideScale:4/3,topScale:1}:null;
+      postProcessing.setCircleCutout(sceneCircleCutout(stage.getBoundingClientRect(),circleRect,fade,control));
     }
     camera.aspect=w/h;
     // Preserve the scene's horizontal composition in a portrait hero instead

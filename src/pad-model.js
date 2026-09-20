@@ -134,15 +134,19 @@ export const RING_START = Math.PI * 5 / 3;
 export const RING_SWEEP = Math.PI * 5 / 3;
 // The arc geometry runs counterclockwise; intensity runs the other way so its
 // low end is on the left and its high end is on the right.
-export function ringAngle(intensity) { return RING_START + RING_SWEEP * (1 - intensity); }
+export function ringAngle(intensity, gap = Math.PI / 3) {
+  return Math.PI * 1.5 + gap / 2 + (Math.PI * 2 - gap) * (1 - intensity);
+}
 
-export function ringIntensity(x, y) {
+export function ringIntensity(x, y, gap = Math.PI / 3) {
+  const start = Math.PI * 1.5 + gap / 2;
+  const sweep = Math.PI * 2 - gap;
   if (x === 0 && y === 0) return null;
-  let angle = (Math.atan2(y, x) - RING_START + Math.PI * 4) % (Math.PI * 2);
+  let angle = (Math.atan2(y, x) - start + Math.PI * 4) % (Math.PI * 2);
   if (angle > Math.PI * 2 - 1e-10) angle = 0;
-  // The bottom 60 degrees are inactive, including during a captured drag.
-  if (angle > RING_SWEEP + 1e-10) return null;
-  const amount = 1 - angle / RING_SWEEP;
+  // The opening is inactive, including during a captured drag.
+  if (angle > sweep + 1e-10) return null;
+  const amount = 1 - angle / sweep;
   // Projecting an endpoint back to an angle can introduce rounding noise.
   // In particular, the low endpoint must reach exact zero to select Neutral.
   return amount < 1e-10 ? 0 : amount > 1 - 1e-10 ? 1 : amount;

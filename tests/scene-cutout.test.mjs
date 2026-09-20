@@ -22,7 +22,7 @@ test('the homepage opening follows the sphere in desktop and mobile layouts at e
   assert.equal(sceneCircleCutout({ width: 0, height: 360 }, {}), null);
 });
 
-test('the flat picker opening keeps the ring clearance and feather proportional on mobile', () => {
+test('the picker clearance and feather are four ninths of the ring spacing at desktop and mobile sizes', () => {
   for (const size of [230, 276, 358]) {
     const scale = size / 276;
     const ringRadius = size * 1.86 / 4.16;
@@ -31,13 +31,17 @@ test('the flat picker opening keeps the ring clearance and feather proportional 
     const stage = { left: 24, top: 150, width: 700, height: 420 };
     const circle = { left: 500 - radius, top: 550 - radius, width: radius * 2, height: radius * 2 };
     const rect = { left: 500 - 43.7 * scale, top: 550 - size / 2 + 3 * scale, width: 87.4 * scale, height: 22 * scale };
-    const cutout = sceneCircleCutout(stage, circle, 14 * scale, { rect, padding });
-    assert.ok(Math.abs(cutout.box.padding / cutout.radius - (1 - ringRadius / radius)) < 1e-10);
+    const cutout = sceneCircleCutout(stage, circle, 14 * scale, { rect, padding: padding * 4 / 9, feather: 14 * scale * 4 / 9, sideScale: 4 / 3, topScale: 1 });
+    assert.ok(Math.abs(cutout.box.padding / cutout.radius - (1 - ringRadius / radius) * 4 / 9) < 1e-10);
+    assert.ok(Math.abs(cutout.box.feather * 9 / 4 - cutout.feather) < 1e-10);
+    assert.equal(cutout.box.sideScale, 4 / 3);
+    assert.equal(cutout.box.topScale, 1);
+    assert.equal(cutout.radius, radius / 420);
     assert.ok(Math.abs(cutout.feather * 420 / scale - 14) < 1e-10);
     assert.ok(Math.abs(cutout.box.halfWidth * 420 * 2 - rect.width) < 1e-10);
     assert.ok(Math.abs(cutout.box.halfHeight * 420 * 2 - rect.height) < 1e-10);
     const clearedTop = stage.top + (1 - cutout.box.y) * stage.height
       - (cutout.box.halfHeight + cutout.box.padding) * 420;
-    assert.ok(Math.abs(clearedTop - (rect.top - padding)) < 1e-10);
+    assert.ok(Math.abs(clearedTop - (rect.top - padding * 4 / 9)) < 1e-10);
   }
 });

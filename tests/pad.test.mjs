@@ -75,6 +75,18 @@ test('intensity ring positions round trip through the 300-degree sweep', () => {
   assert.ok(ringIntensity(1, 0) > .5);
 });
 
+test('the enlarged picker widens endpoint spacing by 25% with matching hit detection', () => {
+  const gap = 2 * Math.asin(.5 * 1.25);
+  const separation = value => Math.cos(ringAngle(1, value)) - Math.cos(ringAngle(0, value));
+  assert.ok(Math.abs(separation(gap) / separation(Math.PI / 3) - 1.25) < 1e-10);
+  for (const intensity of [0, .1, .5, .9, 1]) {
+    const angle = ringAngle(intensity, gap);
+    assert.ok(Math.abs(ringIntensity(Math.cos(angle), Math.sin(angle), gap) - intensity) < 1e-10);
+  }
+  const oldEndpoint = ringAngle(1);
+  assert.equal(ringIntensity(Math.cos(oldEndpoint), Math.sin(oldEndpoint), gap), null);
+});
+
 test('the bottom gap and center cannot select an intensity', () => {
   for (let degrees = 241; degrees < 300; degrees++) {
     const angle = THREE.MathUtils.degToRad(degrees);

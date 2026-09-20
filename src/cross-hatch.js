@@ -52,6 +52,8 @@ const fragmentShader = `
   uniform vec4 circleCutout;
   uniform vec4 cutoutBox;
   uniform float cutoutBoxPadding;
+  uniform float cutoutBoxFeather;
+  uniform vec2 cutoutBoxMarginScale;
   uniform bool transparentBackground;
   uniform bool displayColorInput;
   varying vec2 vUv;
@@ -135,15 +137,19 @@ const fragmentShader = `
       float unit = min(resolution.x, resolution.y);
       float distanceFromCenter = length((vUv - circleCutout.xy) * resolution);
       float cutoutDistance = distanceFromCenter - circleCutout.z * unit;
+      float cutoutDensity = smoothstep(0.0, circleCutout.w * unit, cutoutDistance);
       if (cutoutBox.z > 0.0 && cutoutBox.w > 0.0) {
         // Union the circle with the dropdown's padded rectangle. Its straight
-        // top and rounded outer corners receive the same ink-density feather.
-        vec2 q = abs((vUv - cutoutBox.xy) * resolution) - cutoutBox.zw * unit;
+        // top and rounded outer corners have independently sized clearance.
+        vec2 offset = (vUv - cutoutBox.xy) * resolution;
+        vec2 q = abs(offset) - cutoutBox.zw * unit;
+        // Scale clearance and hatch fade outside the picker, leaving its size intact.
+        q /= vec2(cutoutBoxMarginScale.x, offset.y > 0.0 ? cutoutBoxMarginScale.y : 1.0);
         float boxDistance = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0)
           - cutoutBoxPadding * unit;
-        cutoutDistance = min(cutoutDistance, boxDistance);
+        cutoutDensity = min(cutoutDensity, smoothstep(0.0, cutoutBoxFeather * unit, boxDistance));
       }
-      cmy *= smoothstep(0.0, circleCutout.w * unit, cutoutDistance);
+      cmy *= cutoutDensity;
     }
     float key = min(cmy.x, min(cmy.y, cmy.z));
     vec2 uv = scale * vUv;
@@ -203,6 +209,8 @@ export class CrossHatchEffect {
       circleCutout: { value: new THREE.Vector4(0, 0, 0, 0) },
       cutoutBox: { value: new THREE.Vector4(0, 0, 0, 0) },
       cutoutBoxPadding: { value: 0 },
+      cutoutBoxFeather: { value: 0 },
+      cutoutBoxMarginScale: { value: new THREE.Vector2(1, 1) },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
       black: { value: HATCH_DEFAULTS.black },
     };
@@ -235,10 +243,12 @@ export class CrossHatchEffect {
   }
 
   setCircleCutout(cutout = null) {
+    this.uniforms.cutoutBoxMarginScale.value.set(1, 1);
     if (!cutout) {
       this.uniforms.circleCutout.value.set(0, 0, 0, 0);
       this.uniforms.cutoutBox.value.set(0, 0, 0, 0);
       this.uniforms.cutoutBoxPadding.value = 0;
+      this.uniforms.cutoutBoxFeather.value = 0;
     }
     else {
       const { x, y, radius, feather } = cutout;
@@ -248,9 +258,15 @@ export class CrossHatchEffect {
       if (box && [box.x, box.y, box.halfWidth, box.halfHeight, box.padding].every(Number.isFinite)) {
         this.uniforms.cutoutBox.value.set(box.x, box.y, Math.max(0, box.halfWidth), Math.max(0, box.halfHeight));
         this.uniforms.cutoutBoxPadding.value = Math.max(0, box.padding);
+        this.uniforms.cutoutBoxMarginScale.value.set(
+          Number.isFinite(box.sideScale) ? Math.max(.00001, box.sideScale) : 1,
+          Number.isFinite(box.topScale) ? Math.max(.00001, box.topScale) : 1
+        );
+        this.uniforms.cutoutBoxFeather.value = Math.max(.00001, Number.isFinite(box.feather) ? box.feather : feather);
       } else {
         this.uniforms.cutoutBox.value.set(0, 0, 0, 0);
         this.uniforms.cutoutBoxPadding.value = 0;
+        this.uniforms.cutoutBoxFeather.value = 0;
       }
     }
   }

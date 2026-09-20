@@ -17,6 +17,9 @@ export function sceneCircleCutout(stage, circle, feather = 28, control = null) {
       halfWidth: rect.width / 2 / unit,
       halfHeight: rect.height / 2 / unit,
       padding: Math.max(0, padding) / unit,
+      feather: (control.feather ?? feather) / unit,
+      sideScale: control.sideScale ?? 1,
+      topScale: control.topScale ?? 1,
     };
   }
   return cutout;

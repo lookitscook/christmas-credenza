@@ -16,8 +16,11 @@ applyPageBackground(readPageBackground());
 function createSelector() {
   // Flip only the intensity control, keeping the globe and its PAD axes intact.
   const ringVerticalSign = stage.dataset?.padControls === 'top' ? -1 : 1;
-  const intensityAngle = value => ringVerticalSign * ringAngle(value);
-  const intensityAt = (x, y) => ringIntensity(x, ringVerticalSign * y);
+  // Scale the endpoint separation with the picker width (the gap is a chord).
+  const gapScale = Number(stage.dataset?.padGapScale) || 1;
+  const ringGap = 2 * Math.asin(Math.min(.99, Math.max(.01, .5 * gapScale)));
+  const intensityAngle = value => ringVerticalSign * ringAngle(value, ringGap);
+  const intensityAt = (x, y) => ringIntensity(x, ringVerticalSign * y, ringGap);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(34, 1, .1, 100);
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });

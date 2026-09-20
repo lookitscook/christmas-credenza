@@ -56,12 +56,19 @@ test('the optional flat control opening resets together with the circle', () => 
   effect.setCircleCutout({ ...circle, box });
   assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [.8, .3, .1, .025]);
   assert.equal(effect.uniforms.cutoutBoxPadding.value, .02);
+  assert.equal(effect.uniforms.cutoutBoxFeather.value, circle.feather);
+  effect.setCircleCutout({ ...circle, box: { ...box, padding: box.padding / 3, feather: circle.feather / 3, sideScale: 4 / 3, topScale: 2 / 3 } });
+  assert.equal(effect.uniforms.cutoutBoxFeather.value, circle.feather / 3);
+  assert.equal(effect.uniforms.circleCutout.value.w, circle.feather);
+  assert.deepEqual(effect.uniforms.cutoutBoxMarginScale.value.toArray(), [4 / 3, 2 / 3]);
   effect.setCircleCutout(circle);
   assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [0, 0, 0, 0]);
   effect.setCircleCutout({ ...circle, box });
   effect.setCircleCutout(null);
   assert.deepEqual(effect.uniforms.cutoutBox.value.toArray(), [0, 0, 0, 0]);
   assert.equal(effect.uniforms.cutoutBoxPadding.value, 0);
+  assert.equal(effect.uniforms.cutoutBoxFeather.value, 0);
+  assert.deepEqual(effect.uniforms.cutoutBoxMarginScale.value.toArray(), [1, 1]);
   effect.dispose();
 });
 
