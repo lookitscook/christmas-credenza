@@ -54,7 +54,9 @@ const importMap = JSON.stringify({ imports: {
   'scene-state': moduleURL(sceneState),
   'page-background': moduleURL(background),
 } });
-let html = (await read('index.html')).replace('href="./logo/"', 'href="./logo-standalone.html"');
+let html = (await read('index.html'))
+  .replace('href="./logo/"', 'href="./logo-standalone.html"')
+  .replace('href="./pad/"', 'href="./pad-standalone.html"');
 for (const path of ['vendor/app-block-sandbox.css', 'src/styles.css', 'src/page-background.css']) {
   html = html.replace(`<link rel="stylesheet" href="./${path}">`, `<style>\n${await read(path)}\n</style>`);
 }
@@ -74,13 +76,14 @@ const logoImports = {
   'page-background': moduleURL(background),
 };
 const logoModules = ['logo-settings', 'logo-sphere', 'logo-wordmark', 'logo-export', 'logo-editor'];
-function logoSource(source) {
+function portableSource(source) {
   return source.replaceAll("'../vendor/three.module.js'", "'three'")
     .replace(/'\.\/([a-z-]+)\.js'/g, "'$1'");
 }
-for (const name of logoModules) logoImports[name] = moduleURL(logoSource(await read(`src/${name}.js`)));
+for (const name of logoModules) logoImports[name] = moduleURL(portableSource(await read(`src/${name}.js`)));
 let logo = (await read('logo/index.html'))
   .replace('href="../"', 'href="./standalone.html"')
+  .replace('href="../pad/"', 'href="./pad-standalone.html"')
   .replace('<link rel="stylesheet" href="../src/logo-editor.css">', `<style>${await read('src/logo-editor.css')}</style>`)
   .replace('<link rel="stylesheet" href="../src/page-background.css">', `<style>${await read('src/page-background.css')}</style>`)
   .replace('<script type="module" src="../src/logo-editor.js"></script>',
@@ -90,3 +93,18 @@ const logoLicenses = await Promise.all(['vendor/THREE-LICENSE.txt', 'vendor/cros
 logo = logo.replace('</head>', `<!-- Third-party licenses\n${logoLicenses.join('\n\n')}\n-->\n</head>`);
 await writeFile(new URL('logo-standalone.html', root), logo);
 console.log(`Built logo-standalone.html (${(Buffer.byteLength(logo) / 1024 / 1024).toFixed(1)} MB, all assets embedded).`);
+
+// PAD selector shares Three.js and the same page palette without network assets.
+const padImports = { three: moduleURL(three), 'page-background': moduleURL(background) };
+for (const name of ['pad-landmarks', 'pad-model', 'pad-editor']) padImports[name] = moduleURL(portableSource(await read(`src/${name}.js`)));
+let pad = (await read('pad/index.html'))
+  .replace('href="../"', 'href="./standalone.html"')
+  .replace('href="../logo/"', 'href="./logo-standalone.html"');
+for (const path of ['src/logo-editor.css', 'src/pad-editor.css', 'src/page-background.css']) {
+  pad = pad.replace(`<link rel="stylesheet" href="../${path}">`, `<style>\n${await read(path)}\n</style>`);
+}
+pad = pad.replace('<script type="module" src="../src/pad-editor.js"></script>',
+  `<script type="importmap">${JSON.stringify({ imports: padImports })}</script>\n<script type="module">import 'pad-editor';</script>`);
+pad = pad.replace('</head>', `<!-- Third-party license\n${await read('vendor/THREE-LICENSE.txt')}\n-->\n</head>`);
+await writeFile(new URL('pad-standalone.html', root), pad);
+console.log(`Built pad-standalone.html (${(Buffer.byteLength(pad) / 1024 / 1024).toFixed(1)} MB, all assets embedded).`);

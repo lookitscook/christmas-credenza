@@ -12,6 +12,7 @@ button.subtle { font-size: 14px; background: transparent; margin-top: 14px; }
 :focus-visible { outline: 2px solid var(--page-foreground); outline-offset: 3px; }
 a { color: var(--page-foreground); text-underline-offset: 4px; font-size: 14px; }
 .editor-header { padding: 22px 32px; border-bottom: 1px solid var(--page-border); display: flex; justify-content: space-between; gap: 18px; align-items: center; }
+.editor-nav { display: flex; flex-wrap: wrap; gap: 6px 18px; }
 h1 { margin: 8px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -.6px; }
 h1 span { color: var(--page-muted); font-weight: 400; }
 h2 { margin: 0; font-size: 16px; font-weight: 600; }

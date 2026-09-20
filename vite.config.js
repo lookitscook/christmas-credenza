@@ -4,7 +4,7 @@ export default defineConfig({
   // Pages supplies /repository/ (or / for a custom domain). Local builds stay portable.
   base: process.env.BASE_PATH || './',
   build: { target: 'es2022', minify: false, cssMinify: false,
-    rolldownOptions: { input: { scene: 'index.html', logo: 'logo/index.html' } },
+    rolldownOptions: { input: { scene: 'index.html', logo: 'logo/index.html', pad: 'pad/index.html' } },
   },
   plugins: [{
     name: 'bundle-third-party-licenses',

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Big Feeling — PAD sphere</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../src/logo-editor.css">
+  <link rel="stylesheet" href="../src/pad-editor.css">
+  <link rel="stylesheet" href="../src/page-background.css">
+</head>
+<body>
+  <header class="editor-header">
+    <div>
+      <nav class="editor-nav" aria-label="Editors"><a href="../">Christmas credenza</a><a href="../logo/">Logo editor</a></nav>
+      <h1>Big Feeling <span>/ PAD sphere</span></h1>
+    </div>
+    <button type="button" id="pad-neutral" disabled>Reset to neutral</button>
+  </header>
+  <main class="pad-layout">
+    <div class="preview-caption"><span>PLEASURE · AROUSAL · DOMINANCE</span><span>151 EMOTION LANDMARKS</span></div>
+    <div id="pad-stage" class="pad-stage">
+      <p class="pad-message" id="pad-message" role="status">Preparing the sphere…</p>
+    </div>
+    <div class="pad-readout">
+      <div class="pad-selection">
+        <span id="pad-emotion" class="pad-emotion" role="status">Neutral</span>
+        <div class="pad-color">
+          <span id="pad-color-swatch" class="pad-color-swatch" aria-hidden="true"></span>
+          <span><span class="pad-color-caption">YUV color</span><output id="pad-color-value" aria-label="Selected YUV color in sRGB hexadecimal" aria-live="off">—</output></span>
+        </div>
+      </div>
+      <output id="pad-values" class="pad-values" aria-label="PAD values and intensity" aria-live="off">P 0.00 · A 0.00 · D 0.00</output>
+    </div>
+    <div class="pad-picker">
+      <label for="pad-landmark-picker">Explore all 151 emotions</label>
+      <select id="pad-landmark-picker"><option value="">Choose an emotion…</option></select>
+      <a href="https://doi.org/10.1016/0092-6566(77)90037-X" target="_blank" rel="noopener noreferrer">Russell &amp; Mehrabian (1977), Table 4</a>
+    </div>
+    <p id="pad-help" class="hint">Drag the triangle mesh to explore all 151 points. Labels focus on nearby emotions; hover or select a point to inspect it. Drag the ring to change intensity; the bottom gap is inactive. Release to ease to the nearest emotion. The surface, reticle, and YUV swatch show the current intensity’s color; each landmark dot shows that emotion’s color. Double-click to return to neutral.</p>
+    <p id="pad-keyboard-help" class="hint pad-keyboard">Keyboard: arrow keys rotate · + / − change intensity · Home returns to neutral.</p>
+  </main>
+  <noscript>Enable JavaScript to use the PAD sphere.</noscript>
+  <script type="module" src="../src/pad-editor.js"></script>
+</body>
+</html>
