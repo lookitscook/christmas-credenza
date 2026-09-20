@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Big Feeling — Logo editor</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../src/logo-editor.css">
+</head>
+<body>
+  <header class="editor-header">
+    <div><a href="../">← Christmas credenza</a><h1>Big Feeling <span>/ Logo editor</span></h1></div>
+    <button type="button" id="reset-logo">Reset sphere</button>
+  </header>
+  <main class="editor-layout">
+    <section class="preview-panel" aria-label="Logo preview">
+      <div class="preview-caption"><span>BIG FEELING</span><span>1169 × 1142</span></div>
+      <div class="preview-surround">
+        <div class="logo-preview" id="logo-preview" role="img" aria-label="Big Feeling. Gradient sphere above the fixed Literata wordmark.">
+          <canvas id="sphere-preview" aria-hidden="true"></canvas>
+          <svg id="wordmark-preview" viewBox="0 0 1169 1142" aria-hidden="true"></svg>
+        </div>
+      </div>
+      <p class="preview-note">Adjust the sphere. The reference lettering stays fixed.</p>
+    </section>
+    <aside class="inspector" aria-label="Logo settings">
+      <form id="logo-controls" autocomplete="off">
+        <section class="settings-section">
+          <h2>Gradient sphere</h2>
+          <div class="color-grid" id="sphere-colors"></div>
+          <div id="sphere-controls" class="slider-grid"></div>
+        </section>
+        <section class="settings-section">
+          <div class="section-heading"><h2>Cross-hatch II</h2><label class="toggle"><input type="checkbox" id="hatchEnabled" name="hatchEnabled"> Apply to sphere</label></div>
+          <p class="hint">Ink strokes with open gaps that reveal the background.</p>
+          <fieldset id="hatch-controls" disabled hidden>
+            <legend class="sr-only">Cross-hatch settings</legend>
+            <div id="hatch-sliders" class="slider-grid"></div>
+            <div class="paper-controls">
+              <label>Ink color<input type="color" id="inkColor" name="inkColor"></label>
+              <label>Paper texture<select id="paper" name="paper"></select></label>
+            </div>
+            <button type="button" id="reset-hatch" class="subtle">Reset effect</button>
+          </fieldset>
+          <button type="button" id="use-scene-hatch" class="subtle">Use saved credenza settings</button>
+        </section>
+        <section class="settings-section">
+          <h2>Background & export</h2>
+          <div class="background-controls">
+            <label>Background<input type="color" id="background" name="background"></label>
+            <label class="toggle"><input type="checkbox" id="transparent" name="transparent"> Transparent</label>
+          </div>
+          <label class="export-size">Export size<select id="exportScale" name="exportScale"><option value="1">1× · 1169 × 1142</option><option value="2">2× · 2338 × 2284</option><option value="3">3× · 3507 × 3426</option></select></label>
+          <div class="export-actions"><button type="button" id="export-svg" disabled>Export SVG</button><button type="button" id="export-png" class="primary" disabled>Export PNG</button></div>
+          <p class="hint">Both include the full logo. SVG preserves vector lettering and embeds the rendered sphere.</p>
+        </section>
+      </form>
+      <p id="logo-status" role="status" aria-live="polite">Preparing logo…</p>
+    </aside>
+  </main>
+  <noscript>Enable JavaScript to edit and export the logo.</noscript>
+  <script type="module" src="../src/logo-editor.js"></script>
+</body>
+</html>

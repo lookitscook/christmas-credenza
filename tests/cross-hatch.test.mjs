@@ -119,3 +119,20 @@ test('paper selection races cannot overwrite the latest texture or leak discarde
   assert.equal(newDisposed, true);
   assert.equal(lateDisposed, true);
 });
+
+test('ink-only logo output is opt-in and export scaling preserves stroke dimensions', () => {
+  const { renderer, effect } = fixture();
+  assert.equal(effect.uniforms.transparentPaper.value, false);
+  assert.equal(effect.uniforms.displayColorInput.value, false);
+  const logo = new CrossHatchEffect(renderer, { transparentPaper: true, displayColorInput: true });
+  assert.equal(logo.uniforms.transparentPaper.value, true);
+  assert.equal(logo.uniforms.displayColorInput.value, true);
+  // Straight-alpha output must reach the canvas unchanged, without blending
+  // against its clear color or a second copy of the unprocessed sphere.
+  assert.equal(logo.material.blending, THREE.NoBlending);
+  logo.setSize(3507, 3426, 1169, 1142);
+  assert.deepEqual(logo.uniforms.resolution.value.toArray(), [1169, 1142]);
+  assert.equal(logo.colorTarget.width, 3507);
+  assert.equal(logo.normalTarget.height, 3426);
+  logo.dispose(); effect.dispose();
+});

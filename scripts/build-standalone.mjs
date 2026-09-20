@@ -52,7 +52,7 @@ const importMap = JSON.stringify({ imports: {
   'camera-controls': moduleURL(cameraControls),
   'scene-state': moduleURL(sceneState),
 } });
-let html = await read('index.html');
+let html = (await read('index.html')).replace('href="./logo/"', 'href="./logo-standalone.html"');
 for (const path of ['vendor/app-block-sandbox.css', 'src/styles.css']) {
   html = html.replace(`<link rel="stylesheet" href="./${path}">`, `<style>\n${await read(path)}\n</style>`);
 }
@@ -64,3 +64,25 @@ const licenses = await Promise.all([
 html = html.replace('</head>', `<!-- Third-party licenses\n${licenses.join('\n\n')}\n-->\n</head>`);
 await writeFile(new URL('standalone.html', root), html);
 console.log(`Built standalone.html (${(Buffer.byteLength(html) / 1024 / 1024).toFixed(1)} MB, all assets embedded).`);
+
+// A companion offline editor uses the exact same shader and generated outlines.
+const logoImports = {
+  three: moduleURL(three), 'cross-hatch': moduleURL(hatch),
+  'crt-shader': moduleURL(crtShader), 'scene-state': moduleURL(sceneState),
+};
+const logoModules = ['logo-settings', 'logo-sphere', 'logo-wordmark', 'logo-export', 'logo-editor'];
+function logoSource(source) {
+  return source.replaceAll("'../vendor/three.module.js'", "'three'")
+    .replace(/'\.\/([a-z-]+)\.js'/g, "'$1'");
+}
+for (const name of logoModules) logoImports[name] = moduleURL(logoSource(await read(`src/${name}.js`)));
+let logo = (await read('logo/index.html'))
+  .replace('href="../"', 'href="./standalone.html"')
+  .replace('<link rel="stylesheet" href="../src/logo-editor.css">', `<style>${await read('src/logo-editor.css')}</style>`)
+  .replace('<script type="module" src="../src/logo-editor.js"></script>',
+    `<script type="importmap">${JSON.stringify({ imports: logoImports })}</script>\n<script type="module">import 'logo-editor';</script>`);
+const logoLicenses = await Promise.all(['vendor/THREE-LICENSE.txt', 'vendor/cross-hatch/LICENSE.txt',
+  'vendor/fonts/LITERATA-OFL.txt'].map(read));
+logo = logo.replace('</head>', `<!-- Third-party licenses\n${logoLicenses.join('\n\n')}\n-->\n</head>`);
+await writeFile(new URL('logo-standalone.html', root), logo);
+console.log(`Built logo-standalone.html (${(Buffer.byteLength(logo) / 1024 / 1024).toFixed(1)} MB, all assets embedded).`);

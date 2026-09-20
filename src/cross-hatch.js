@@ -56,6 +56,8 @@ const fragmentShader = `
   uniform float magenta;
   uniform float yellow;
   uniform float black;
+  uniform bool transparentPaper;
+  uniform bool displayColorInput;
   varying vec2 vUv;
 
   #include <tonemapping_pars_fragment>
@@ -94,8 +96,11 @@ const fragmentShader = `
   void main() {
     // Three r160 render targets contain linear light without tone mapping.
     // Match the scene's ACES exposure before separating it into CMYK ink.
-    vec3 color = texture2D(colorTexture, vUv).rgb;
-    color = LinearTosRGB(vec4(ACESFilmicToneMapping(color), 1.0)).rgb;
+    vec4 source = texture2D(colorTexture, vUv);
+    vec3 color = source.rgb;
+    if (!displayColorInput) {
+      color = LinearTosRGB(vec4(ACESFilmicToneMapping(color), 1.0)).rgb;
+    }
     float normalEdge = 1.0;
     if (contour > 0.0) {
       normalEdge = 1.0 - length(sobel(vUv, vec2(contour) / resolution));
@@ -104,6 +109,12 @@ const fragmentShader = `
     }
     color *= normalEdge;
     vec3 cmy = 0.5 - 0.5 * clamp(color, 0.0, 1.0);
+    if (transparentPaper) {
+      // Treat the source's soft edge as diminishing ink density BEFORE the
+      // line thresholds. This also fades contour ink into thinner strokes and
+      // open gaps, instead of applying a smooth opacity mask to finished ink.
+      cmy *= clamp(source.a, 0.0, 1.0);
+    }
     float key = min(cmy.x, min(cmy.y, cmy.z));
     vec2 uv = scale * vUv;
     float c = lines(cmy.x, uv, 75.0, thickness * cyan);
@@ -113,12 +124,23 @@ const fragmentShader = `
     vec3 screen = mix(1.0 - vec3(c, m, y), inkColor, k);
     vec3 paper = texture2D(paperTexture, 0.00025 * vUv * resolution).rgb;
     // These are display-space ink/paper colors: no second tone/color transform.
-    gl_FragColor = vec4(min(paper, screen), 1.0);
+    if (transparentPaper) {
+      // Separate subtractive ink from its white substrate. This reconstructs
+      // the same CMYK result over white, with truly empty gaps over any other
+      // background. Do not leave an opaque gradient/paper layer underneath.
+      float coverage = 1.0 - min(screen.r, min(screen.g, screen.b));
+      vec3 ink = (screen - vec3(1.0 - coverage)) / max(coverage, 0.00001);
+      // Alpha comes only from hatch coverage (including line antialiasing).
+      // Source alpha has already shaped the strokes above; do not fade twice.
+      gl_FragColor = vec4(min(paper, ink), coverage);
+    } else {
+      gl_FragColor = vec4(min(paper, screen), 1.0);
+    }
   }
 `;
 
 export class CrossHatchEffect {
-  constructor(renderer) {
+  constructor(renderer, { transparentPaper = false, displayColorInput = false } = {}) {
     this.renderer = renderer;
     this.disposed = false;
     this.paperRequest = 0;
@@ -141,6 +163,8 @@ export class CrossHatchEffect {
       paperTexture: { value: this.fallbackPaper },
       resolution: { value: new THREE.Vector2(1, 1) },
       toneMappingExposure: { value: renderer.toneMappingExposure },
+      transparentPaper: { value: transparentPaper },
+      displayColorInput: { value: displayColorInput },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
     };
     for (const { key } of HATCH_SLIDERS) this.uniforms[key] = { value: HATCH_DEFAULTS[key] };
@@ -151,6 +175,7 @@ export class CrossHatchEffect {
       depthTest: false,
       depthWrite: false,
       toneMapped: false,
+      blending: THREE.NoBlending,
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material);
     this.quad.frustumCulled = false;
@@ -187,12 +212,14 @@ export class CrossHatchEffect {
     return true;
   }
 
-  setSize(width, height) {
+  setSize(width, height, referenceWidth = width, referenceHeight = height) {
     width = Math.max(1, Math.round(width));
     height = Math.max(1, Math.round(height));
     this.colorTarget.setSize(width, height);
     this.normalTarget.setSize(width, height);
-    this.uniforms.resolution.value.set(width, height);
+    // A fixed reference size lets exports increase resolution without changing
+    // the spacing, weight, paper scale, or contour of the preview's strokes.
+    this.uniforms.resolution.value.set(Math.max(1, referenceWidth), Math.max(1, referenceHeight));
   }
 
   render(scene, camera) {

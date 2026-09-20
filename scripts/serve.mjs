@@ -15,6 +15,9 @@ http.createServer(async (req, res) => {
       res.writeHead(403).end('Forbidden'); return;
     }
     let info = await stat(file);
+    if (info.isDirectory() && !pathname.endsWith('/')) {
+      res.writeHead(301, { Location: pathname + '/' }).end(); return;
+    }
     if (info.isDirectory()) { file = path.join(file, 'index.html'); info = await stat(file); }
     const headers = { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes' };
     let start = 0, end = info.size - 1, status = 200;

@@ -104,6 +104,41 @@ build embeds the same compressed clip.
 If browser policy blocks muted autoplay, clicking the scene starts playback.
 If the video cannot load, the original screen remains visible with a status message.
 
+## Logo editor
+
+Open **Logo editor** from the scene toolbar, or go to **/logo/**. The editor adds
+the fixed Big Feeling wordmark and sphere layout from the supplied reference.
+Literata lettering is pre-outlined and cannot be edited.
+Adjust the sphere's three colors, direction, balance, highlight, edge softness,
+and grain; the preview updates immediately. Colors support pickers and six-digit
+hex inputs, and every slider has a numeric input for exact values. **Reset sphere**
+restores the sphere and hatch defaults while preserving background and export
+preferences. Hatch controls appear when **Apply to sphere** is enabled.
+
+**Apply to sphere** uses the same `CrossHatchEffect` class, GLSL shader, CMYK line
+angles, controls, normal contours, and paper textures as the credenza. The logo
+opts into ink-only compositing: gaps have zero alpha and reveal the selected
+background (or transparency). There is no solid gradient or paper disc beneath
+the hatch strokes. The credenza retains its original opaque paper composite.
+The sphere's edge softness reduces ink density before the hatch lines are
+generated, so the fade consists of thinning strokes and widening transparent
+gaps, including contour ink, rather than a smooth opacity fade over the strokes.
+**Use saved credenza settings** copies its last saved Cross-hatch II values into
+the logo editor. Logo settings save separately on this device.
+
+**Export SVG** and **Export PNG** include the entire logo at 1×, 2×, or 3× size.
+Both support transparent backgrounds, including the gaps within the sphere.
+The SVG retains vector lettering and embeds a PNG of the shader-rendered sphere
+to preserve the exact effect; it does not require fonts or external images.
+Export resolution increases without changing hatch spacing or paper scale.
+The checkerboard is a preview aid and is never exported.
+
+`npm start`, Vite, and the GitHub Pages build all include the `/logo/` route.
+`npm run build` also generates **logo-standalone.html**, a self-contained offline
+editor alongside the existing **standalone.html** scene. Keep both files together
+to use their navigation links. Font licenses are in `vendor/fonts/` and included
+in both the production distribution and offline editor.
+
 ## Cross-hatch post-processing
 
 Choose **Post-processing → Cross-hatch II** in the toolbar above the scene to apply
