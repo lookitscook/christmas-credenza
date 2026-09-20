@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CAMERA_DEFAULTS } from '../src/camera-controls.js';
 import { CRT_DEFAULTS } from '../src/crt-shader.js';
 import { SCENE_HATCH_DEFAULTS } from '../src/cross-hatch.js';
-import { STATE_APP, STATE_VERSION, STATE_COOKIE, MAX_STATE_BYTES, parseSceneState, validateSceneState, readStateCookie, writeStateCookie, createScenePersistence } from '../src/scene-state.js';
+import { STATE_APP, STATE_VERSION, STATE_COOKIE, SCENE_DEFAULTS, MAX_STATE_BYTES, parseSceneState, validateSceneState, readStateCookie, writeStateCookie, createScenePersistence } from '../src/scene-state.js';
 
 function fixture() {
   return {
@@ -81,7 +81,7 @@ test('older scene snapshots restore supported settings and discard obsolete pape
 test('edge fade round trips, defaults for older saves, and rejects invalid values', () => {
   const state = fixture();
   delete state.hatch.edgeFade;
-  assert.equal(parseSceneState(JSON.stringify(state)).hatch.edgeFade, .16);
+  assert.equal(parseSceneState(JSON.stringify(state)).hatch.edgeFade, .02);
   for (const [input, expected] of [[0, 0], [.31, .31], [.5, .5], [-1, 0], [2, .5]]) {
     state.hatch.edgeFade = input;
     assert.equal(parseSceneState(JSON.stringify(state)).hatch.edgeFade, expected);
@@ -162,4 +162,10 @@ test('persistence restores on load, validates imports before applying, and flush
   persistence = createScenePersistence(root, () => current, state => { current = state; applications++; });
   assert.equal(applications, 3);
   assert.deepEqual(current, parseSceneState(storage.get(STATE_COOKIE)));
+  persistence.dispose();
+  storage.clear();
+  persistence = createScenePersistence(root, () => current, state => { current = state; applications++; });
+  assert.equal(applications, 4);
+  assert.deepEqual(current, SCENE_DEFAULTS, 'fresh browsers start from the captured scene settings');
+  assert.deepEqual(parseSceneState(storage.get(STATE_COOKIE)), SCENE_DEFAULTS);
 });

@@ -1,10 +1,10 @@
 // Adapted from Serenity Shader by Matt Sephton (@gingerbeardman), MIT.
 // See vendor/crt/ for the original shader, license, and adaptation notes.
 export const CRT_DEFAULTS = Object.freeze({
-  scanlineIntensity: .15, scanlineCount: 144, adaptiveIntensity: .5, yOffset: 0,
-  brightness: 1.1, contrast: 1.05, saturation: 1.1, rgbShift: 0,
-  vignetteStrength: .5, curvature: .06, flickerStrength: .01,
-  bloomIntensity: .42, bloomThreshold: 0,
+  scanlineIntensity: .33, scanlineCount: 144, adaptiveIntensity: .5, yOffset: 0,
+  brightness: 1.75, contrast: .89, saturation: .81, rgbShift: .1,
+  vignetteStrength: .7, curvature: 0, flickerStrength: .03,
+  bloomIntensity: .65, bloomThreshold: .19,
 });
 
 export const CRT_CONTROLS = [

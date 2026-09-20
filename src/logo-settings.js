@@ -1,4 +1,4 @@
-import { HATCH_DEFAULTS, HATCH_FIXED_PARAMETERS, HATCH_SLIDERS } from './cross-hatch.js';
+import { LOGO_HATCH_DEFAULTS, HATCH_FIXED_PARAMETERS, HATCH_SLIDERS } from './cross-hatch.js';
 import { DEFAULT_PAGE_BACKGROUND } from './page-background.js';
 
 export const LOGO_WIDTH = 1169;
@@ -6,9 +6,9 @@ export const LOGO_HEIGHT = 1142;
 export const SPHERE = Object.freeze({ x: 831, y: 337, radius: 268 });
 const FIXED_SPHERE_SETTINGS = Object.freeze({ saturation: 100, grain: 8 });
 export const LOGO_DEFAULTS = Object.freeze({
-  color1: '#d66b87', color2: '#f29459', color3: '#ffda42',
-  angle: 45, midpoint: 50, highlight: 18, softness: 22, ...FIXED_SPHERE_SETTINGS,
-  hatchEnabled: false, ...HATCH_DEFAULTS,
+  color1: '#00e1ff', color2: '#5ab054', color3: '#ff00dd',
+  angle: 0, midpoint: 50, highlight: 40, softness: 22, ...FIXED_SPHERE_SETTINGS,
+  hatchEnabled: true, grain: 0, ...LOGO_HATCH_DEFAULTS,
   background: DEFAULT_PAGE_BACKGROUND, transparent: false, exportScale: 2,
 });
 export const SPHERE_CONTROLS = Object.freeze([
@@ -42,6 +42,6 @@ export function readLogoSettings(input = {}) {
     }
   }
   // Hatch strokes supply the texture; never add source grain beneath them.
-  if (result.hatchEnabled) result.grain = 0;
+  result.grain = result.hatchEnabled ? 0 : FIXED_SPHERE_SETTINGS.grain;
   return result;
 }

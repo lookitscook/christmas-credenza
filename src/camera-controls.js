@@ -1,6 +1,9 @@
 import * as THREE from '../vendor/three.module.js';
 
-export const CAMERA_DEFAULTS = Object.freeze({ yaw: -.055, pitch: .27, distance: 4.2, target: [ .32, 1.42, 0 ] });
+export const CAMERA_DEFAULTS = Object.freeze({
+  yaw: -0.5231882112845768, pitch: 0.12120312500000002, distance: 1.8825519019374903,
+  target: Object.freeze([0.0759447936460346, 1.263378774797568, 0.08526518192651969]),
+});
 const clamp = THREE.MathUtils.clamp;
 const copy = state => ({ ...state, target: [...state.target] });
 

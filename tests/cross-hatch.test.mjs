@@ -178,7 +178,7 @@ test('render targets use actual drawing-buffer dimensions and finite parameter l
   effect.setParameter('thickness', 0);
   assert.equal(effect.uniforms.thickness.value, 0);
   effect.setParameter('contour', NaN);
-  assert.equal(effect.uniforms.contour.value, 4);
+  assert.equal(effect.uniforms.contour.value, .5);
   effect.setParameter('inkColor', '#ff8000');
   effect.setParameter('black', .8);
   assert.equal(effect.uniforms.inkColor.value.getHexString(), '000000');

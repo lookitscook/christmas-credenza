@@ -1,4 +1,4 @@
-import { HATCH_DEFAULTS, HATCH_SLIDERS } from './cross-hatch.js';
+import { LOGO_HATCH_DEFAULTS, HATCH_SLIDERS } from './cross-hatch.js';
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
 import { LOGO_WIDTH, LOGO_HEIGHT, LOGO_DEFAULTS, SPHERE_CONTROLS, readLogoSettings } from './logo-settings.js';
 import { LogoSphere } from './logo-sphere.js';
@@ -13,7 +13,7 @@ try {
   if (stored) settings = readLogoSettings(JSON.parse(stored));
 } catch { /* A corrupt or inaccessible saved value must not prevent editing. */ }
 
-for (const [index, label] of ['Rose', 'Coral', 'Gold'].entries()) {
+for (const [index, label] of ['Color 1', 'Color 2', 'Color 3'].entries()) {
   const key = `color${index + 1}`;
   const row = document.createElement('div'); row.className = 'color-control';
   const caption = document.createElement('label'); caption.htmlFor = key; caption.textContent = label;
@@ -98,9 +98,9 @@ $('logo-controls').addEventListener('focusout', event => {
 });
 $('reset-logo').addEventListener('click', () => {
   update({ ...LOGO_DEFAULTS, background: settings.background, transparent: settings.transparent, exportScale: settings.exportScale });
-  status('Sphere reset to the reference colors. Background and export preferences kept.');
+  status('Sphere reset to project defaults. Background and export preferences kept.');
 });
-$('reset-hatch').addEventListener('click', () => { update({ ...settings, ...HATCH_DEFAULTS }); status('Cross-hatch defaults restored.'); });
+$('reset-hatch').addEventListener('click', () => { update({ ...settings, ...LOGO_HATCH_DEFAULTS }); status('Cross-hatch defaults restored.'); });
 $('use-scene-hatch').addEventListener('click', () => {
   try {
     let saved;

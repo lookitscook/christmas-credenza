@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { HATCH_DEFAULTS, HATCH_SLIDERS } from '../src/cross-hatch.js';
+import { LOGO_HATCH_DEFAULTS, HATCH_SLIDERS } from '../src/cross-hatch.js';
 import { LOGO_DEFAULTS, SPHERE_CONTROLS, readLogoSettings, LOGO_WIDTH, LOGO_HEIGHT } from '../src/logo-settings.js';
 import { LogoSphere } from '../src/logo-sphere.js';
 import { createLogoSVG } from '../src/logo-export.js';
@@ -9,9 +9,9 @@ import { WORDMARK } from '../src/logo-wordmark.js';
 
 const pixel = 'data:image/png;base64,iVBORw0KGgo=';
 
-test('logo shares the complete credenza defaults and safely restores partial settings', () => {
+test('logo uses its captured hatch defaults and safely restores partial settings', () => {
   const settings = readLogoSettings({ color1: '#ABCDEF', thickness: 999, scale: -1, injected: '<script>' });
-  for (const [key, value] of Object.entries(HATCH_DEFAULTS)) assert.equal(LOGO_DEFAULTS[key], value);
+  for (const [key, value] of Object.entries(LOGO_HATCH_DEFAULTS)) assert.equal(LOGO_DEFAULTS[key], value);
   for (const { key } of HATCH_SLIDERS) assert.equal(typeof settings[key], 'number');
   assert.equal(settings.color1, '#abcdef');
   assert.equal(settings.thickness, 3);
@@ -26,7 +26,7 @@ test('retired logo controls keep their defaults when restoring older settings', 
   for (const input of [0, 45, 175, -5, 250, NaN, Infinity, null, 'obsolete']) {
     const settings = readLogoSettings({ saturation: input, grain: input, inkColor: input, black: input, color1: '#123456' });
     assert.equal(settings.saturation, 100);
-    assert.equal(settings.grain, 8);
+    assert.equal(settings.grain, 0);
     assert.equal(settings.black, 0);
     assert.equal(settings.inkColor, '#000000');
     assert.equal(settings.color1, '#123456');

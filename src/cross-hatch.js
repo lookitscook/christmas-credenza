@@ -8,7 +8,7 @@ export const HATCH_FIXED_PARAMETERS = Object.freeze({ ...HATCH_FIXED_CMY, black:
 export const HATCH_DEFAULTS = Object.freeze({
   scale: 1.5,
   thickness: 1,
-  contour: 4,
+  contour: 0.5,
   ...HATCH_FIXED_PARAMETERS,
 });
 
@@ -19,7 +19,8 @@ export const HATCH_SLIDERS = Object.freeze([
 ]);
 
 // The logo uses its sphere's own soft edge instead of a viewport fade.
-export const SCENE_HATCH_DEFAULTS = Object.freeze({ ...HATCH_DEFAULTS, edgeFade: 0.16 });
+export const LOGO_HATCH_DEFAULTS = Object.freeze({ ...HATCH_DEFAULTS, scale: .25, thickness: 1.5, contour: 1.5 });
+export const SCENE_HATCH_DEFAULTS = Object.freeze({ ...HATCH_DEFAULTS, edgeFade: 0.02 });
 export const SCENE_HATCH_SLIDERS = Object.freeze([
   ...HATCH_SLIDERS,
   { key: 'edgeFade', label: 'Edge fade', min: 0, max: 0.5, percent: true },

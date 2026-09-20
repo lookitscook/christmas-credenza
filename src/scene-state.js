@@ -1,10 +1,22 @@
-import { CRT_CONTROLS } from './crt-shader.js';
+import { CRT_CONTROLS, CRT_DEFAULTS } from './crt-shader.js';
+import { CAMERA_DEFAULTS } from './camera-controls.js';
 import { HATCH_FIXED_PARAMETERS, SCENE_HATCH_DEFAULTS, SCENE_HATCH_SLIDERS } from './cross-hatch.js';
 
 export const STATE_APP = 'christmas-credenza';
 export const STATE_VERSION = 1;
 export const STATE_COOKIE = 'christmas_credenza_state_v1';
 export const MAX_STATE_BYTES = 64 * 1024;
+
+// Captured from the user's local editor settings on 2026-09-20. Existing
+// browser saves still take precedence; fresh sessions start with this view.
+export const SCENE_DEFAULTS = Object.freeze({
+  app: STATE_APP, version: STATE_VERSION, camera: CAMERA_DEFAULTS,
+  train: Object.freeze({ running: true, position: 4.721212105999891, wheelTravel: 350.46514699972056 }),
+  tv: Object.freeze({ enabled: true, currentTime: 4.445289 }),
+  crt: Object.freeze({ enabled: true, parameters: CRT_DEFAULTS }),
+  effect: 'cross-hatch', hatch: SCENE_HATCH_DEFAULTS,
+  panels: Object.freeze({ crt: false, hatch: true }),
+});
 
 function object(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Missing or invalid ${name}.`);
@@ -119,6 +131,7 @@ export function createScenePersistence(root, getState, applyState) {
       try { const stored = localStorage.getItem(STATE_COOKIE); if (stored) restored = parseSceneState(stored); } catch { /* Start with defaults. */ }
     }
     if (restored) { applyState(restored); status.textContent = 'Saved settings restored.'; }
+    else applyState(SCENE_DEFAULTS);
   } catch (error) {
     status.textContent = `Saved settings could not be restored. ${error.message}`;
   }
