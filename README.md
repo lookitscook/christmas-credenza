@@ -160,6 +160,9 @@ Drag the colored triangle mesh to choose the Pleasure, Arousal, and Dominance
 direction, and drag the ring to change intensity. The ring has an inactive
 90-degree gap at the bottom. Releasing either drag eases rotation and intensity
 to the nearest emotion landmark over 420 ms; a new drag interrupts the snap.
+Nearest emotions and labels use great-circle distance between directions on the
+globe, ignoring intensity. The destination then restores its recorded intensity.
+At zero intensity, snapping still uses the globe's retained direction.
 Reduced-motion preferences skip the animation. Double-click or choose **Reset to
 neutral** to set intensity to zero. With the sphere focused, arrow keys rotate,
 +/− change intensity, and Home returns to neutral. The whole ring stays visible
@@ -178,7 +181,7 @@ Overwhelmed uses its 1977 values `(0.14, 0.45, −0.24)` to cover a less crowded
 direction; Love's direction sits close to Fascinated and is not reserved a slot.
 
 Up to **20 points** appear on both desktop and narrow screens, with labels only
-for the **four nearest the reticle in screen space** during an active drag.
+for the **four nearest the reticle along the globe's surface** during an active drag.
 On page load and whenever the sphere is idle, only the selected emotion's label
 appears. Starting a snap fades out the previous labels; the destination's label
 fades in only when it arrives, without nearby labels appearing along the way.

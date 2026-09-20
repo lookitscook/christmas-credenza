@@ -35,9 +35,9 @@ test('PAD directions retain the source cube mapping and intensity bounds', () =>
 
 test('curated emotion landmarks retain their PAD values and zero intensity is neutral', () => {
   for (const [name, p, a, d] of PAD_EMOTIONS) assert.equal(padEmotion({ p, a, d }), name);
-  assert.equal(padEmotion(dirToPad({ x: .55, y: .42, z: .25 }, .68)), 'Lucky');
+  assert.equal(padEmotion(dirToPad({ x: .55, y: .42, z: .25 }, .68)), 'Inspired');
   assert.equal(padEmotion(dirToPad({ x: -.8, y: .2, z: .5 }, 0)), 'Neutral');
-  assert.equal(padEmotion({ p: -1, a: -1, d: 1 }), 'PAD');
+  assert.equal(padEmotion({ p: -.75, a: -.5, d: .5 }), 'PAD');
 });
 
 test('PAD colors remain clipped and the neutral source color stays gray', () => {
@@ -89,11 +89,37 @@ test('snapping finds the closest landmark even outside the emotion display thres
     const result = dirToPad(direction, intensity);
     assert.ok(Math.hypot(result.p - p, result.a - a, result.d - d) < 1e-12);
   }
-  const distant = { p: -1, a: -1, d: 1 };
+  const distant = { p: -.75, a: -.5, d: .5 };
   assert.equal(padEmotion(distant), 'PAD');
   assert.equal(nearestPadEmotion(distant).name, 'Stoic');
   assert.equal(nearestPadEmotion({ p: .8, a: .5, d: .45 }).name, 'Happy');
   assert.equal(nearestPadEmotion({ p: .75, a: .47, d: .34 }).name, 'Lucky');
+});
+
+test('surface-nearest emotions and readouts ignore intensity and keep measured coordinates', () => {
+  for (const [name, p, a, d] of PAD_EMOTIONS) {
+    for (const intensity of [.000001, .01, .1, .5, 1]) {
+      const values = dirToPad({ x: p, y: a, z: d }, intensity);
+      const nearest = nearestPadEmotion(values);
+      assert.equal(nearest.name, name);
+      assert.equal(padEmotion(values), name);
+      assert.deepEqual([nearest.p, nearest.a, nearest.d], [p, a, d]);
+      assert.ok(nearest.distance < 1e-7);
+    }
+  }
+  // This direction used to select different moods as radial intensity changed.
+  const direction = new THREE.Vector3(.55, .42, .25);
+  const [, p, a, d] = PAD_EMOTIONS.find(([name]) => name === 'Inspired');
+  const angle = direction.angleTo(new THREE.Vector3(p, a, d));
+  for (const intensity of [.01, .1, .5, .68, 1]) {
+    const values = dirToPad(direction, intensity);
+    const nearest = nearestPadEmotion(values);
+    assert.equal(nearest.name, 'Inspired');
+    assert.equal(padEmotion(values), 'Inspired');
+    assert.ok(Math.abs(nearest.distance - angle) < 1e-12);
+  }
+  assert.equal(nearestPadEmotion({ p: 0, a: 0, d: 0 }), null);
+  assert.equal(padEmotion({ p: 0, a: 0, d: 0 }), 'Neutral');
 });
 
 test('the curated allowlist retains anchors and roughly a 4:1 mix, with no sexual terms', () => {
@@ -175,14 +201,15 @@ test('measured additions shrink gaps across a uniformly sampled globe', () => {
 });
 
 test('twenty visible points retain the nearest four, selection, hover, and angular coverage', () => {
-  const reticle = { x: 300, y: 200 };
+  const direction = { x: .55, y: .42, z: .25 };
   const candidates = PAD_EMOTIONS.map(([name], index) => ({ name, x: 300 + index * 2, y: 200 }));
-  const chosen = visiblePadEmotions(candidates, reticle, 'Ennui', 'Anxious');
+  const chosen = visiblePadEmotions(candidates, direction, 'Ennui', 'Anxious');
   assert.equal(chosen.length, 20);
   assert.equal(new Set(chosen).size, 20);
-  for (const item of candidates.slice(0, 4)) assert.ok(chosen.includes(item));
-  for (const name of ['Ennui', 'Anxious']) assert.ok(chosen.some(item => item.name === name));
-  assert.deepEqual(nearestPadLabels(chosen, reticle), candidates.slice(0, 4));
+  for (const name of ['Inspired', 'Lucky', 'Happy', 'Affectionate', 'Ennui', 'Anxious']) {
+    assert.ok(chosen.some(item => item.name === name));
+  }
+  assert.deepEqual(nearestPadLabels(chosen, direction).map(item => item.name), ['Inspired', 'Lucky', 'Happy', 'Affectionate']);
   // The low-arousal and negative-dominance poles should get points even when
   // all four reticle neighbors are from the more familiar positive group.
   for (const direction of [new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, -1)]) {
@@ -192,21 +219,26 @@ test('twenty visible points retain the nearest four, selection, hover, and angul
     }));
   }
   const few = candidates.slice(-4);
-  assert.equal(visiblePadEmotions(few, reticle).length, 4);
-  assert.equal(nearestPadLabels(few, reticle).length, 4);
-  assert.deepEqual(visiblePadEmotions([], reticle), []);
-  assert.deepEqual(nearestPadLabels([], reticle), []);
+  assert.equal(visiblePadEmotions(few, direction).length, 4);
+  assert.equal(nearestPadLabels(few, direction).length, 4);
+  assert.deepEqual(visiblePadEmotions([], direction), []);
+  assert.deepEqual(nearestPadLabels([], direction), []);
 });
 
-test('labels choose exactly the four nearest the reticle regardless of valence or order', () => {
+test('labels use surface distance regardless of intensity, screen projection, valence or order', () => {
   const candidates = PAD_EMOTIONS.map(([name], index) => ({ name, x: 100 + index, y: 100 + index * 2 }));
-  const reticle = { x: 100 + candidates.length - 1, y: 100 + (candidates.length - 1) * 2 };
-  const chosen = nearestPadLabels(candidates, reticle);
+  const direction = new THREE.Vector3(.55, .42, .25);
+  const chosen = nearestPadLabels(candidates, direction);
   assert.equal(chosen.length, 4);
-  assert.deepEqual(chosen, candidates.slice(-4).reverse());
-  assert.deepEqual(nearestPadLabels([...candidates].reverse(), reticle), chosen);
-  const visible = visiblePadEmotions(candidates, reticle, 'Happy', 'Overwhelmed');
-  assert.deepEqual(nearestPadLabels(visible, reticle), chosen);
+  assert.deepEqual(chosen.map(item => item.name), ['Inspired', 'Lucky', 'Happy', 'Affectionate']);
+  assert.deepEqual(nearestPadLabels([...candidates].reverse(), direction), chosen);
+  for (const scale of [.001, .1, .5, 1, 10]) {
+    assert.deepEqual(nearestPadLabels(candidates, direction.clone().multiplyScalar(scale)), chosen);
+  }
+  const reprojected = candidates.map(item => ({ name: item.name, x: -item.x * 4, y: item.y / 2 }));
+  assert.deepEqual(nearestPadLabels(reprojected, direction).map(item => item.name), chosen.map(item => item.name));
+  const visible = visiblePadEmotions(candidates, direction, 'Happy', 'Overwhelmed');
+  assert.deepEqual(nearestPadLabels(visible, direction), chosen);
 });
 
 test('camera framing keeps the complete ring and knob visible in portrait and landscape', () => {

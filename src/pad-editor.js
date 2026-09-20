@@ -174,12 +174,11 @@ function createSelector() {
       landmark.label.classList.toggle('is-selected', landmark.name === selectedLabel);
       visible.push(landmark);
     }
-    const reticle = { x: width / 2, y: height / 2 };
-    const displayed = visiblePadEmotions(visible, reticle, selectedLabel, hoveredLandmark);
+    const displayed = visiblePadEmotions(visible, selectedDirection, selectedLabel, hoveredLandmark);
     // Fade outgoing labels as a snap starts; reveal the destination only once
     // it arrives. Nearby labels are reserved for an active drag.
     const labeled = snap ? [] : activePointer !== null
-      ? nearestPadLabels(displayed, reticle)
+      ? nearestPadLabels(displayed, selectedDirection)
       : displayed.filter(landmark => landmark.name === selectedLabel);
     for (const landmark of displayed) landmark.point.hidden = false;
     // Keep labels clear of the reticle, all points, and each other.
@@ -262,7 +261,9 @@ function createSelector() {
     updateLandmarks(label);
     if (render) invalidate();
   }
-  function snapToEmotion(emotion = nearestPadEmotion(dirToPad(selectedDirection, intensity))) {
+  // Use the retained surface direction even at zero intensity, where PAD is
+  // the origin and cannot identify a direction on its own.
+  function snapToEmotion(emotion = nearestPadEmotion(dirToPad(selectedDirection, 1))) {
     releaseDrag();
     snap = null;
     const direction = new THREE.Vector3(emotion.p, emotion.a, emotion.d).normalize();

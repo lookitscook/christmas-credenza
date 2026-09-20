@@ -247,6 +247,34 @@ test('the rendered bottom gap cannot start a drag or change intensity during a r
   app.pointer('pointercancel');
 });
 
+test('intensity changes preserve the nearest surface emotion and zero-intensity drags snap by direction', async () => {
+  const app = await selector(true);
+  const picker = app.elements['pad-landmark-picker'];
+  picker.value = String(model.PAD_EMOTIONS.findIndex(([name]) => name === 'Happy'));
+  picker.fire('change');
+  const radius = 1.86 * 300 / 2.08;
+  const position = intensity => {
+    const angle = model.ringAngle(intensity);
+    return [300 + Math.cos(angle) * radius, 300 - Math.sin(angle) * radius];
+  };
+  app.pointer('pointerdown', ...position(.1));
+  const nearby = visibleLabelNames(app);
+  for (const intensity of [.1, .3, .6, 1, 0]) {
+    app.pointer('pointermove', ...position(intensity));
+    assert.equal(app.elements['pad-emotion'].textContent, intensity ? 'Happy' : 'Neutral');
+    assert.deepEqual(visibleLabelNames(app), nearby);
+  }
+  app.pointer('pointerup', ...position(0));
+  assert.equal(app.elements['pad-emotion'].textContent, 'Happy');
+  assert.deepEqual(visibleLabelNames(app), ['Happy']);
+  assert.ok(app.elements['pad-values'].textContent.endsWith('· 81%'));
+  app.elements['pad-neutral'].fire('click');
+  assert.equal(app.elements['pad-emotion'].textContent, 'Neutral');
+  app.pointer('pointerdown');
+  app.pointer('pointerup');
+  assert.equal(app.elements['pad-emotion'].textContent, 'Happy');
+});
+
 test('reduced motion snaps immediately without animating', async () => {
   const app = await selector(true);
   app.pointer('pointerdown');
@@ -279,7 +307,8 @@ test('emotion points follow rotation, hide on the far side, and keep clustered l
     const visible = labels.filter(label => !label.hidden);
     assert.equal(visible.length, Math.min(4, facing.length));
     assert.equal(points.filter(point => !point.hidden).length, Math.min(20, facing.length));
-    const distance = i => Math.hypot(parseFloat(points[i].style.left) - 300, parseFloat(points[i].style.top) - 300);
+    const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(app.group.quaternion.clone().invert());
+    const distance = i => direction.angleTo(new THREE.Vector3(...model.PAD_EMOTIONS[i].slice(1)));
     const nearestNames = facing.sort((a, b) => distance(a) - distance(b)).slice(0, 4).map(i => labels[i].textContent);
     assert.deepEqual(visible.map(label => label.textContent).sort(), nearestNames.sort());
     for (let i = 0; i < visible.length; i++) {
@@ -380,7 +409,8 @@ test('all landmarks remain available on narrow screens and the selected label st
     app.pointer('pointerdown');
     app.pointer('pointermove', 310, 300);
     assert.equal(visibleLabelNames(app).length, 4);
-    const distance = i => Math.hypot(parseFloat(points[i].style.left) - 160, parseFloat(points[i].style.top) - 140);
+    const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(app.group.quaternion.clone().invert());
+    const distance = i => direction.angleTo(new THREE.Vector3(...model.PAD_EMOTIONS[i].slice(1)));
     const nearest = points.map((point, i) => ({ point, i })).filter(({ point }) => !point.hidden)
       .sort((a, b) => distance(a.i) - distance(b.i)).slice(0, 4).map(({ i }) => labels[i].textContent);
     assert.deepEqual(labels.filter(item => !item.hidden).map(item => item.textContent).sort(), nearest.sort());

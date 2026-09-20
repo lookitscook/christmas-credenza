@@ -36,20 +36,29 @@ const emotionDirections = new Map(PAD_EMOTIONS.map(([name, p, a, d]) => {
   return [name, [p / length, a / length, d / length]];
 }));
 function emotionSeparation(a, b) {
-  const left = emotionDirections.get(a.name), right = emotionDirections.get(b.name);
+  return surfaceDistance(emotionDirections.get(a.name), emotionDirections.get(b.name));
+}
+function unitDirection({ x, y, z }) {
+  const length = Math.hypot(x, y, z);
+  return length > 0 ? [x / length, y / length, z / length] : null;
+}
+function surfaceDistance(left, right) {
   const dot = left.reduce((sum, value, i) => sum + value * right[i], 0);
   return Math.acos(Math.max(-1, Math.min(1, dot)));
 }
 
-// Screen distance matches what the user sees around the fixed center reticle.
-export function nearestPadLabels(candidates, reticle) {
-  const distance = item => Math.hypot(item.x - reticle.x, item.y - reticle.y);
+// Great-circle distance on the unit sphere: intensity and screen projection
+// must not change which landmark directions are closest to the reticle.
+export function nearestPadLabels(candidates, direction) {
+  const unit = unitDirection(direction);
+  if (!unit) return [];
+  const distance = item => surfaceDistance(unit, emotionDirections.get(item.name));
   return candidates.filter(item => emotionOrder.has(item.name))
     .sort((a, b) => distance(a) - distance(b) || emotionOrder.get(a.name) - emotionOrder.get(b.name))
     .slice(0, PAD_LABEL_LIMIT);
 }
 
-export function visiblePadEmotions(candidates, reticle, selectedName, hoveredName) {
+export function visiblePadEmotions(candidates, direction, selectedName, hoveredName) {
   const ranked = candidates.filter(item => emotionOrder.has(item.name))
     .sort(sourcePriority);
   const chosen = [];
@@ -58,7 +67,7 @@ export function visiblePadEmotions(candidates, reticle, selectedName, hoveredNam
   }
   // Reserve the closest four before distributing the other points, so neither
   // valence preferences nor hover can hide a point that should have a label.
-  nearestPadLabels(ranked, reticle).forEach(add);
+  nearestPadLabels(ranked, direction).forEach(add);
   add(ranked.find(item => item.name === hoveredName));
   add(ranked.find(item => item.name === selectedName));
   while (chosen.length < Math.min(PAD_VISIBLE_LIMIT, ranked.length)) {
@@ -99,9 +108,11 @@ vec3 padSrgbColor(vec3 pad) {
 }`;
 
 export function nearestPadEmotion({ p, a, d }) {
+  const direction = unitDirection({ x: p, y: a, z: d });
+  if (!direction) return null;
   let result, nearest = Infinity;
   for (const [name, pleasure, arousal, dominance] of PAD_EMOTIONS) {
-    const distance = Math.hypot(p - pleasure, a - arousal, d - dominance);
+    const distance = surfaceDistance(direction, emotionDirections.get(name));
     if (distance < nearest) {
       nearest = distance;
       result = { name, p: pleasure, a: arousal, d: dominance, distance };
@@ -111,8 +122,9 @@ export function nearestPadEmotion({ p, a, d }) {
 }
 
 export function padEmotion(values) {
-  if (Math.max(Math.abs(values.p), Math.abs(values.a), Math.abs(values.d)) < .00001) return 'Neutral';
   const nearest = nearestPadEmotion(values);
+  if (!nearest) return 'Neutral';
+  // The readout's proximity threshold is an angle in radians (about 27.5°).
   return nearest.distance < .48 ? nearest.name : 'PAD';
 }
 
