@@ -17,7 +17,7 @@ const fragmentShader = `
   precision highp float;
   varying vec2 spherePosition;
   uniform vec3 color1, color2, color3;
-  uniform float angle, midpoint, highlight, softness, grain;
+  uniform float angle, midpoint, saturation, highlight, softness, grain;
   float noise(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   void main() {
     vec2 p = spherePosition;
@@ -28,6 +28,9 @@ const fragmentShader = `
     float light = 1.0 - smoothstep(0.0, 1.5, length(p - vec2(0.34, 0.56)));
     color = mix(color, vec3(1.0, 0.96, 0.77), light * highlight);
     color += (noise(floor((p + 1.0) * 268.0)) - 0.5) * grain;
+    color = clamp(color, 0.0, 1.0);
+    float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    color = mix(vec3(luminance), color, saturation);
     float opacity = softness > 0.0 ? 1.0 - smoothstep(1.0 - softness, 1.0, length(p)) : 1.0;
     gl_FragColor = vec4(clamp(color, 0.0, 1.0), opacity);
   }
@@ -39,11 +42,11 @@ export class LogoSphere {
       premultipliedAlpha: false, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(1);
     this.renderer.setClearColor(0x000000, 0);
-    this.effect = new CrossHatchEffect(this.renderer, { transparentPaper: true, displayColorInput: true });
+    this.effect = new CrossHatchEffect(this.renderer, { transparentBackground: true, displayColorInput: true });
     this.scene = new THREE.Scene();
     this.camera = new THREE.OrthographicCamera(-LOGO_WIDTH / 2, LOGO_WIDTH / 2, LOGO_HEIGHT / 2, -LOGO_HEIGHT / 2, 1, 2000);
     this.camera.position.z = 1000;
-    this.uniforms = Object.fromEntries(['angle', 'midpoint', 'highlight', 'softness', 'grain'].map(key => [key, { value: 0 }]));
+    this.uniforms = Object.fromEntries(['angle', 'midpoint', 'saturation', 'highlight', 'softness', 'grain'].map(key => [key, { value: 0 }]));
     for (const key of ['color1', 'color2', 'color3']) this.uniforms[key] = { value: new THREE.Color() };
     this.material = new THREE.RawShaderMaterial({ vertexShader, fragmentShader, uniforms: this.uniforms,
       blending: THREE.NoBlending, toneMapped: false });
@@ -51,9 +54,6 @@ export class LogoSphere {
     this.sphere.scale.setScalar(SPHERE.radius);
     this.sphere.position.set(SPHERE.x - LOGO_WIDTH / 2, LOGO_HEIGHT / 2 - SPHERE.y, 0);
     this.scene.add(this.sphere);
-    this.paper = null;
-    this.paperPromise = null;
-    this.paperRevision = 0;
     this.setScale(1);
   }
 
@@ -64,21 +64,6 @@ export class LogoSphere {
     this.effect.setSize(LOGO_WIDTH * scale, LOGO_HEIGHT * scale, LOGO_WIDTH, LOGO_HEIGHT);
   }
 
-  async setPaper(name) {
-    if (this.paper === name && !this.paperPromise) return;
-    if (this.requestedPaper === name && this.paperPromise) return this.paperPromise;
-    const revision = ++this.paperRevision;
-    this.requestedPaper = name;
-    // Even a return to the already-loaded paper must supersede an in-flight
-    // different selection (A → B → A), otherwise B could arrive and replace A.
-    this.paperPromise = this.effect.setPaper(name).then(loaded => {
-      if (loaded) this.paper = name;
-    }).finally(() => {
-      if (revision === this.paperRevision) this.paperPromise = null;
-    });
-    return this.paperPromise;
-  }
-
   render(input, scale = 1) {
     const settings = readLogoSettings(input);
     this.setScale(scale);
@@ -86,7 +71,8 @@ export class LogoSphere {
       this.uniforms[key].value.set(settings[key]).convertLinearToSRGB();
     }
     this.uniforms.angle.value = THREE.MathUtils.degToRad(settings.angle);
-    for (const key of ['midpoint', 'highlight', 'softness', 'grain']) this.uniforms[key].value = settings[key] / 100;
+    // Saturation changes the source colors before the hatch separates them into ink.
+    for (const key of ['midpoint', 'saturation', 'highlight', 'softness', 'grain']) this.uniforms[key].value = settings[key] / 100;
     for (const { key } of HATCH_SLIDERS) this.effect.setParameter(key, settings[key]);
     this.effect.setParameter('inkColor', settings.inkColor);
     if (settings.hatchEnabled) this.effect.render(this.scene, this.camera);

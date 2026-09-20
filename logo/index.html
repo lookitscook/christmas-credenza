@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <title>Big Feeling — Logo editor</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="../src/logo-editor.css">
+  <link rel="stylesheet" href="../src/page-background.css">
 </head>
 <body>
   <header class="editor-header">
@@ -37,9 +38,8 @@
           <fieldset id="hatch-controls" disabled hidden>
             <legend class="sr-only">Cross-hatch settings</legend>
             <div id="hatch-sliders" class="slider-grid"></div>
-            <div class="paper-controls">
+            <div class="ink-controls">
               <label>Ink color<input type="color" id="inkColor" name="inkColor"></label>
-              <label>Paper texture<select id="paper" name="paper"></select></label>
             </div>
             <button type="button" id="reset-hatch" class="subtle">Reset effect</button>
           </fieldset>
@@ -48,8 +48,8 @@
         <section class="settings-section">
           <h2>Background & export</h2>
           <div class="background-controls">
-            <label>Background<input type="color" id="background" name="background"></label>
-            <label class="toggle"><input type="checkbox" id="transparent" name="transparent"> Transparent</label>
+            <label>Page background<input type="color" id="background" name="background"></label>
+            <label class="toggle"><input type="checkbox" id="transparent" name="transparent"> Transparent export</label>
           </div>
           <label class="export-size">Export size<select id="exportScale" name="exportScale"><option value="1">1× · 1169 × 1142</option><option value="2">2× · 2338 × 2284</option><option value="3">3× · 3507 × 3426</option></select></label>
           <div class="export-actions"><button type="button" id="export-svg" disabled>Export SVG</button><button type="button" id="export-png" class="primary" disabled>Export PNG</button></div>

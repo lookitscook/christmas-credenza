@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en-US" class="dark" data-chat-theme="black" data-app-block-surface="inline" data-app-block-style-mode="default" data-ready style="color-scheme:dark">
+<html lang="en-US" data-app-block-surface="inline" data-app-block-style-mode="default" data-ready>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light dark">
   <title>Christmas credenza — exact tight-lights scene</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./vendor/app-block-sandbox.css">
   <link rel="stylesheet" href="./src/styles.css">
+  <link rel="stylesheet" href="./src/page-background.css">
 </head>
 <body>
 <main>
@@ -61,17 +62,13 @@
     </div>
     <p class="text-small text-muted settings-description">Applies to the whole scene when selected in Post-processing.</p>
     <div class="hatch-grid" data-hatch-sliders></div>
-    <div class="hatch-paper-controls">
+    <div class="hatch-color-controls">
       <label class="hatch-ink" for="hatch-ink">Ink color
         <input id="hatch-ink" class="form-control form-control-color" type="color" value="#000000" data-hatch-ink>
-      </label>
-      <label class="hatch-paper" for="hatch-paper">Paper
-        <select id="hatch-paper" class="form-select" data-hatch-paper></select>
       </label>
     </div>
     <button type="button" class="btn settings-reset" data-action="reset-hatch">Reset effect</button>
     <p class="text-small text-muted settings-source">Effect by <a href="https://spite.github.io/sketch/post-cross-hatch-ii/index.html" target="_blank" rel="noopener noreferrer">spite · View original demo</a></p>
-    <p class="text-small" role="status" data-hatch-status></p>
   </section>
   </aside>
   </div>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CAMERA_DEFAULTS } from '../src/camera-controls.js';
 import { CRT_DEFAULTS } from '../src/crt-shader.js';
-import { HATCH_DEFAULTS } from '../src/cross-hatch.js';
+import { SCENE_HATCH_DEFAULTS } from '../src/cross-hatch.js';
 import { STATE_APP, STATE_VERSION, STATE_COOKIE, MAX_STATE_BYTES, parseSceneState, validateSceneState, readStateCookie, writeStateCookie, createScenePersistence } from '../src/scene-state.js';
 
 function fixture() {
@@ -11,7 +11,7 @@ function fixture() {
     train: { running: true, position: 2.45, wheelTravel: 25.62 },
     tv: { enabled: false, currentTime: 12.375 },
     crt: { enabled: false, parameters: { ...CRT_DEFAULTS, brightness: 1.43 } },
-    effect: 'cross-hatch', hatch: { ...HATCH_DEFAULTS, inkColor: '#336699', paper: 'Craft rough' },
+    effect: 'cross-hatch', hatch: { ...SCENE_HATCH_DEFAULTS, inkColor: '#336699' },
     panels: { crt: false, hatch: true },
   };
 }
@@ -46,7 +46,6 @@ test('invalid imports are rejected and numeric limits are normalized', () => {
     state => { state.camera.target = [0, null, 0]; },
     state => { state.tv.currentTime = Infinity; },
     state => { state.crt.enabled = 'false'; },
-    state => { state.hatch.paper = 'https://example.com/image.jpg'; },
     state => { state.hatch.inkColor = '<script>'; },
     state => { state.effect = 'unknown'; },
   ]) {
@@ -71,6 +70,49 @@ test('corrupt or blocked cookies do not look like successful saves', () => {
   assert.throws(() => readStateCookie({ cookie: `${STATE_COOKIE}=%ZZ` }));
   const doc = { get cookie() { return ''; }, set cookie(value) {} };
   assert.equal(writeStateCookie(doc, fixture()), false);
+});
+
+test('older scene snapshots restore supported settings and discard obsolete paper selections', () => {
+  const expected = fixture();
+  const legacy = structuredClone(expected);
+  legacy.hatch.paper = 'Craft rough';
+  assert.deepEqual(parseSceneState(JSON.stringify(legacy)), expected);
+});
+
+test('edge fade round trips, defaults for older saves, and rejects invalid values', () => {
+  const state = fixture();
+  delete state.hatch.edgeFade;
+  assert.equal(parseSceneState(JSON.stringify(state)).hatch.edgeFade, .16);
+  for (const [input, expected] of [[0, 0], [.31, .31], [.5, .5], [-1, 0], [2, .5]]) {
+    state.hatch.edgeFade = input;
+    assert.equal(parseSceneState(JSON.stringify(state)).hatch.edgeFade, expected);
+    const doc = withCookie(cookieDocument());
+    writeStateCookie(doc, state);
+    assert.equal(readStateCookie(doc).hatch.edgeFade, expected);
+  }
+  for (const input of [null, '25%', NaN, Infinity]) {
+    state.hatch.edgeFade = input;
+    assert.throws(() => validateSceneState(state), /edgeFade/);
+  }
+});
+
+test('scene imports and cookies normalize retired CMY controls to 1', () => {
+  const expected = fixture();
+  expected.hatch.black = .35;
+  expected.hatch.scale = 1.2;
+  for (const saved of [
+    { cyan: 0, magenta: .25, yellow: .75 },
+    { cyan: null, magenta: 'obsolete', yellow: -5 },
+    {},
+  ]) {
+    const legacy = structuredClone(expected);
+    for (const key of ['cyan', 'magenta', 'yellow']) delete legacy.hatch[key];
+    Object.assign(legacy.hatch, saved);
+    assert.deepEqual(parseSceneState(JSON.stringify(legacy)), expected);
+    const doc = withCookie(cookieDocument());
+    writeStateCookie(doc, legacy);
+    assert.deepEqual(readStateCookie(doc), expected);
+  }
 });
 
 test('persistence restores on load, validates imports before applying, and flushes on pagehide', async t => {

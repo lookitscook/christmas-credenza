@@ -1,4 +1,6 @@
 // Change this path to choose the video shown on the television.
+import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
+const pageBackground = applyPageBackground(readPageBackground());
 const TV_VIDEO_URL = new URL('../content/11543712-256px.mp4', import.meta.url).href;
 const root = document.getElementById('christmas-credenza-tight-3d');
 const stage = root.querySelector('.scene-stage');
@@ -11,7 +13,7 @@ try {
   const { createCameraRig, attachCameraControls, CAMERA_DEFAULTS } = await import('./camera-controls.js');
   const { createScenePersistence, STATE_APP, STATE_VERSION } = await import('./scene-state.js');
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#3b2619');
+  scene.background = new THREE.Color(pageBackground);
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
   renderer.shadowMap.enabled = true;
@@ -140,7 +142,8 @@ try {
   function trackAt(s,offset=0){s=((s%loopLength)+loopLength)%loopLength;const r=loopR+offset;let x,z,dx,dz;if(s<2*loopA){x=loopA-s;z=r;dx=-1;dz=0;}else if(s<2*loopA+Math.PI*loopR){const a=(s-2*loopA)/loopR;x=-loopA-r*Math.sin(a);z=r*Math.cos(a);dx=-Math.cos(a);dz=-Math.sin(a);}else if(s<4*loopA+Math.PI*loopR){x=-loopA+s-(2*loopA+Math.PI*loopR);z=-r;dx=1;dz=0;}else{const a=(s-(4*loopA+Math.PI*loopR))/loopR;x=loopA+r*Math.sin(a);z=-r*Math.cos(a);dx=Math.cos(a);dz=Math.sin(a);}return {x,z,angle:Math.atan2(-dz,dx)};}
   const tieCount=240;const ties=new THREE.InstancedMesh(new THREE.BoxGeometry(.009,.007,.044),standard('#49352b',.88),tieCount);ties.castShadow=true;ties.receiveShadow=true;
   for(let i=0;i<tieCount;i++){const p=trackAt(i/tieCount*loopLength);dummy.position.set(p.x,topY+.006,p.z);dummy.rotation.set(0,p.angle,0);dummy.updateMatrix();ties.setMatrixAt(i,dummy.matrix);}scene.add(ties);
-  for(const offset of [-.014,.014]){const pts=[];for(let i=0;i<=500;i++){const p=trackAt(i/500*loopLength,offset);pts.push(V(p.x,trackY,p.z));}const rail=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),500,.0025,6,false),silver);rail.castShadow=false;}
+  // Mask only the metal rails; the wooden ties keep their contours.
+  for(const offset of [-.014,.014]){const pts=[];for(let i=0;i<=500;i++){const p=trackAt(i/500*loopLength,offset);pts.push(V(p.x,trackY,p.z));}const rail=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),500,.0025,6,false),silver);rail.castShadow=false;rail.userData.excludeFromContours=true;}
 
   // Mallard's streamlined casing and exposed red driving wheels.
   const trainBlue=new THREE.MeshPhysicalMaterial({color:'#126290',roughness:.32,metalness:.30,clearcoat:.5});
@@ -178,8 +181,11 @@ try {
 
   // Layered fir boughs and tens of thousands of tiny physical needles.
   const tree=new THREE.Group();scene.add(tree);tree.position.set(1.30,.10,-.025);
+  tree.userData.excludeFromContours=true;
   cylinder(.045,.095,1.8,0,.90,0,standard('#342615',.95),tree,12);
-  cylinder(.22,.26,.09,0,.035,0,standard('#26251e',.58,.35),tree,32);
+  const treeBase=cylinder(.22,.26,.09,0,.035,0,standard('#26251e',.58,.35),tree,32);
+  treeBase.name='Christmas tree base';
+  treeBase.userData.excludeFromContours=false;
   const branchPositions=[],needlePositions=[],needleColors=[];
   function addNeedle(a,b,col){needlePositions.push(a.x,a.y,a.z,b.x,b.y,b.z);needleColors.push(col.r,col.g,col.b,col.r*.66,col.g*.78,col.b*.65);}
   const greens=['#203a24','#24452c','#315331','#17361f','#3e5b33'].map(c=>new THREE.Color(c));
@@ -267,6 +273,7 @@ try {
   }
   const starGeometry=new THREE.BufferGeometry();starGeometry.setAttribute('position',new THREE.Float32BufferAttribute(starVertices,3));starGeometry.computeVertexNormals();
   const star=mesh(starGeometry,starGold,tree);star.name='Golden five-pointed tree star';star.position.set(0,2.43,0);star.rotation.y=-.18;
+  star.userData.excludeFromContours=false;
   cylinder(.010,.014,.15,0,2.29,0,starGold,tree,12);
 
   // Warm soft light and restrained room fill retain the nighttime palette.
@@ -284,7 +291,11 @@ try {
 
   let requested=false;
   const panels=createEffectPanels(root);
-  const postProcessing=createPostProcessing(renderer,root,invalidate,panels);
+  const postProcessing=createPostProcessing(renderer,root,invalidate,panels,pageBackground);
+  function syncBackground(){const color=applyPageBackground(readPageBackground());scene.background.set(color);postProcessing.setBackground(color);}
+  const backgroundListeners=new AbortController();
+  window.addEventListener('storage',event=>{if(event.key===LOGO_STORAGE_KEY || event.key===null)syncBackground();},{signal:backgroundListeners.signal});
+  window.addEventListener('pageshow',syncBackground,{signal:backgroundListeners.signal});
   const drawingSize=new THREE.Vector2();
   function render(){requested=false;postProcessing.render(scene,camera);}
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
@@ -307,7 +318,7 @@ try {
     tvVideo.setState(state);postProcessing.setState(state);panels.setState(state.panels);invalidate();
   }
   persistence=createScenePersistence(root,getState,applyState);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();persistence.dispose();setTrainRunning(false);cameraControls.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence.dispose();setTrainRunning(false);cameraControls.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';

@@ -1,5 +1,5 @@
 import { CRT_CONTROLS } from './crt-shader.js';
-import { HATCH_SLIDERS, PAPER_TEXTURES } from './cross-hatch.js';
+import { HATCH_FIXED_CMY, SCENE_HATCH_DEFAULTS, SCENE_HATCH_SLIDERS } from './cross-hatch.js';
 
 export const STATE_APP = 'christmas-credenza';
 export const STATE_VERSION = 1;
@@ -37,9 +37,12 @@ export function validateSceneState(value) {
   const tv = object(value.tv, 'TV');
   const crt = object(value.crt, 'CRT');
   const hatch = object(value.hatch, 'cross-hatch');
+  // Older version 1 saves predate the adjustable viewport fade.
+  const sceneHatch = { ...hatch, edgeFade: hatch.edgeFade === undefined ? SCENE_HATCH_DEFAULTS.edgeFade : hatch.edgeFade };
   const panels = object(value.panels, 'panels');
   if (!['none', 'cross-hatch'].includes(value.effect)) throw new Error('Invalid post-processing effect.');
-  if (!Object.hasOwn(PAPER_TEXTURES, hatch.paper)) throw new Error('Invalid paper texture.');
+  // Version 1 snapshots can still contain a legacy paper selection. Ignore it
+  // so old saves restore all supported controls without loading a texture.
   if (typeof hatch.inkColor !== 'string' || !/^#[\da-f]{6}$/i.test(hatch.inkColor)) throw new Error('Invalid ink color.');
   return {
     app: STATE_APP, version: STATE_VERSION,
@@ -53,7 +56,7 @@ export function validateSceneState(value) {
     tv: { enabled: boolean(tv.enabled, 'tv.enabled'), currentTime: number(tv.currentTime, 'tv.currentTime', 0) },
     crt: { enabled: boolean(crt.enabled, 'crt.enabled'), parameters: parameters(crt.parameters, CRT_CONTROLS, 'CRT') },
     effect: value.effect,
-    hatch: { ...parameters(hatch, HATCH_SLIDERS, 'cross-hatch'), inkColor: hatch.inkColor.toLowerCase(), paper: hatch.paper },
+    hatch: { ...parameters(sceneHatch, SCENE_HATCH_SLIDERS, 'cross-hatch'), ...HATCH_FIXED_CMY, inkColor: hatch.inkColor.toLowerCase() },
     panels: { crt: boolean(panels.crt, 'panels.crt'), hatch: boolean(panels.hatch, 'panels.hatch') },
   };
 }

@@ -1,0 +1,49 @@
+/* Keep the shared palette authoritative when Vite places shared CSS before
+   the older scene stylesheet in production. */
+html:root {
+  color-scheme: light;
+  --page-background: #f3f0e6;
+  --page-foreground: #062627;
+  --page-muted: color-mix(in srgb, var(--page-foreground) 68%, var(--page-background));
+  --page-border: color-mix(in srgb, var(--page-foreground) 24%, var(--page-background));
+  --page-control: color-mix(in srgb, var(--page-foreground) 5%, var(--page-background));
+  --page-hover: color-mix(in srgb, var(--page-foreground) 10%, var(--page-background));
+  --background: var(--page-background);
+  --foreground: var(--page-foreground);
+  --card: var(--page-background);
+  --card-foreground: var(--page-foreground);
+  --popover: var(--page-background);
+  --popover-foreground: var(--page-foreground);
+  --primary: var(--page-foreground);
+  --primary-foreground: var(--page-background);
+  --secondary: var(--page-control);
+  --secondary-foreground: var(--page-foreground);
+  --muted-foreground: var(--page-muted);
+  --accent: var(--page-hover);
+  --accent-foreground: var(--page-foreground);
+  --border: var(--page-border);
+  --input: var(--page-border);
+  --ring: var(--page-foreground);
+}
+html:root, html:root > body {
+  min-height: 100%;
+  background: var(--page-background) !important;
+  color: var(--page-foreground);
+}
+
+/* The captured scene stylesheet uses these legacy tokens directly on headings,
+   labels, and links. Follow the page palette even when the OS prefers dark mode.
+   This selector also wins over the sandbox's :root:not(.light) media rule. */
+html:root[data-app-block-surface] {
+  --text-primary: var(--page-foreground);
+  --text-secondary: var(--page-muted);
+  --text-tertiary: var(--page-muted);
+  --text-primary-inverse: var(--page-background);
+  --main-surface-primary: var(--page-background);
+  --main-surface-secondary: var(--page-control);
+  --main-surface-tertiary: var(--page-hover);
+  --interactive-bg-primary-default: var(--page-foreground);
+  --interactive-label-primary-default: var(--page-background);
+  --interactive-border-focus: var(--page-foreground);
+  --link: var(--page-foreground);
+}

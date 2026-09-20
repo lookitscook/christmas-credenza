@@ -1,35 +1,31 @@
 import * as THREE from '../vendor/three.module.js';
+import { DEFAULT_PAGE_BACKGROUND } from './page-background.js';
 
 // Adapted from spite/sketch/post-cross-hatch-ii (MIT).
 // Source and license: ../vendor/cross-hatch/README.md and LICENSE.txt.
+export const HATCH_FIXED_CMY = Object.freeze({ cyan: 1, magenta: 1, yellow: 1 });
 export const HATCH_DEFAULTS = Object.freeze({
   scale: 1.5,
   thickness: 1,
   contour: 4,
-  cyan: 1,
-  magenta: 1,
-  yellow: 1,
+  ...HATCH_FIXED_CMY,
   black: 0.2,
   inkColor: '#000000',
-  paper: 'Parchment',
 });
 
 export const HATCH_SLIDERS = Object.freeze([
   { key: 'scale', label: 'Scale', min: 0.1, max: 2 },
   { key: 'thickness', label: 'Thickness', min: 0, max: 3 },
   { key: 'contour', label: 'Contour', min: 0, max: 10 },
-  { key: 'cyan', label: 'Cyan', min: 0, max: 1 },
-  { key: 'magenta', label: 'Magenta', min: 0, max: 1 },
-  { key: 'yellow', label: 'Yellow', min: 0, max: 1 },
   { key: 'black', label: 'Black', min: 0, max: 1 },
 ]);
 
-export const PAPER_TEXTURES = Object.freeze({
-  'Craft light': new URL('../vendor/cross-hatch/paper/Craft_Light.jpg', import.meta.url).href,
-  'Craft rough': new URL('../vendor/cross-hatch/paper/Craft_Rough.jpg', import.meta.url).href,
-  'Watercolor cold press': new URL('../vendor/cross-hatch/paper/Watercolor_ColdPress.jpg', import.meta.url).href,
-  Parchment: new URL('../vendor/cross-hatch/paper/Parchment.jpg', import.meta.url).href,
-});
+// The logo uses its sphere's own soft edge instead of a viewport fade.
+export const SCENE_HATCH_DEFAULTS = Object.freeze({ ...HATCH_DEFAULTS, edgeFade: 0.16 });
+export const SCENE_HATCH_SLIDERS = Object.freeze([
+  ...HATCH_SLIDERS,
+  { key: 'edgeFade', label: 'Edge fade', min: 0, max: 0.5, percent: true },
+]);
 
 const vertexShader = `
   precision highp float;
@@ -46,32 +42,36 @@ const fragmentShader = `
   precision highp float;
   uniform sampler2D colorTexture;
   uniform sampler2D normalTexture;
-  uniform sampler2D paperTexture;
+  uniform vec3 backgroundColor;
   uniform vec2 resolution;
   uniform vec3 inkColor;
   uniform float scale;
   uniform float thickness;
   uniform float contour;
-  uniform float cyan;
-  uniform float magenta;
-  uniform float yellow;
   uniform float black;
-  uniform bool transparentPaper;
+  uniform float edgeFade;
+  uniform bool transparentBackground;
   uniform bool displayColorInput;
   varying vec2 vUv;
 
   #include <tonemapping_pars_fragment>
   #include <colorspace_pars_fragment>
 
-  vec3 sobel(vec2 uv, vec2 offset) {
-    vec3 tl = texture2D(normalTexture, uv + vec2(-offset.x, -offset.y)).rgb;
-    vec3 tc = texture2D(normalTexture, uv + vec2(0.0, -offset.y)).rgb;
-    vec3 tr = texture2D(normalTexture, uv + vec2(offset.x, -offset.y)).rgb;
-    vec3 ml = texture2D(normalTexture, uv + vec2(-offset.x, 0.0)).rgb;
-    vec3 mr = texture2D(normalTexture, uv + vec2(offset.x, 0.0)).rgb;
-    vec3 bl = texture2D(normalTexture, uv + vec2(-offset.x, offset.y)).rgb;
-    vec3 bc = texture2D(normalTexture, uv + vec2(0.0, offset.y)).rgb;
-    vec3 br = texture2D(normalTexture, uv + vec2(offset.x, offset.y)).rgb;
+  vec3 contourNormal(vec2 uv, vec3 centerNormal) {
+    vec4 sampleNormal = texture2D(normalTexture, uv);
+    // Masked objects must not introduce silhouettes in nearby contour pixels.
+    return mix(centerNormal, sampleNormal.rgb, sampleNormal.a);
+  }
+
+  vec3 sobel(vec2 uv, vec2 offset, vec3 centerNormal) {
+    vec3 tl = contourNormal(uv + vec2(-offset.x, -offset.y), centerNormal);
+    vec3 tc = contourNormal(uv + vec2(0.0, -offset.y), centerNormal);
+    vec3 tr = contourNormal(uv + vec2(offset.x, -offset.y), centerNormal);
+    vec3 ml = contourNormal(uv + vec2(-offset.x, 0.0), centerNormal);
+    vec3 mr = contourNormal(uv + vec2(offset.x, 0.0), centerNormal);
+    vec3 bl = contourNormal(uv + vec2(-offset.x, offset.y), centerNormal);
+    vec3 bc = contourNormal(uv + vec2(0.0, offset.y), centerNormal);
+    vec3 br = contourNormal(uv + vec2(offset.x, offset.y), centerNormal);
     vec3 horizontal = -tl - 2.0 * ml - bl + tr + 2.0 * mr + br;
     vec3 vertical = -tl - 2.0 * tc - tr + bl + 2.0 * bc + br;
     return sqrt(horizontal * horizontal + vertical * vertical);
@@ -103,47 +103,56 @@ const fragmentShader = `
     }
     float normalEdge = 1.0;
     if (contour > 0.0) {
-      normalEdge = 1.0 - length(sobel(vUv, vec2(contour) / resolution));
+      vec4 normal = texture2D(normalTexture, vUv);
+      normalEdge = 1.0 - length(sobel(vUv, vec2(contour) / resolution, normal.rgb));
       float width = max(thickness, 0.00001);
       normalEdge = smoothstep(0.5 - width, 0.5 + width, normalEdge);
+      // Alpha is a depth-tested contour mask, not the source color's opacity.
+      normalEdge = mix(1.0, normalEdge, normal.a);
     }
     color *= normalEdge;
     vec3 cmy = 0.5 - 0.5 * clamp(color, 0.0, 1.0);
-    if (transparentPaper) {
+    if (transparentBackground) {
       // Treat the source's soft edge as diminishing ink density BEFORE the
       // line thresholds. This also fades contour ink into thinner strokes and
       // open gaps, instead of applying a smooth opacity mask to finished ink.
       cmy *= clamp(source.a, 0.0, 1.0);
     }
+    if (edgeFade > 0.0) {
+      // Fade the scene into the page with the same ink-density treatment as
+      // the logo. Equal pixel widths on each side keep the fade even as the
+      // viewport changes shape; multiplying the sides softens the corners.
+      vec2 edgeDistance = min(vUv, 1.0 - vUv) * resolution;
+      float fadeWidth = edgeFade * min(resolution.x, resolution.y);
+      vec2 edgeDensity = smoothstep(vec2(0.0), vec2(fadeWidth), edgeDistance);
+      cmy *= edgeDensity.x * edgeDensity.y;
+    }
     float key = min(cmy.x, min(cmy.y, cmy.z));
     vec2 uv = scale * vUv;
-    float c = lines(cmy.x, uv, 75.0, thickness * cyan);
-    float m = lines(cmy.y, uv, 15.0, thickness * magenta);
-    float y = lines(cmy.z, uv, 0.0, thickness * yellow);
+    // CMY weights are always 1 in both editors.
+    float c = lines(cmy.x, uv, 75.0, thickness);
+    float m = lines(cmy.y, uv, 15.0, thickness);
+    float y = lines(cmy.z, uv, 0.0, thickness);
     float k = lines(key, uv, 45.0, thickness * black);
     vec3 screen = mix(1.0 - vec3(c, m, y), inkColor, k);
-    vec3 paper = texture2D(paperTexture, 0.00025 * vUv * resolution).rgb;
-    // These are display-space ink/paper colors: no second tone/color transform.
-    if (transparentPaper) {
-      // Separate subtractive ink from its white substrate. This reconstructs
-      // the same CMYK result over white, with truly empty gaps over any other
-      // background. Do not leave an opaque gradient/paper layer underneath.
-      float coverage = 1.0 - min(screen.r, min(screen.g, screen.b));
-      vec3 ink = (screen - vec3(1.0 - coverage)) / max(coverage, 0.00001);
+    // Both editors use the same ink overlay. Empty gaps show the page color;
+    // the logo can preserve those gaps as alpha in transparent exports.
+    float coverage = 1.0 - min(screen.r, min(screen.g, screen.b));
+    vec3 ink = (screen - vec3(1.0 - coverage)) / max(coverage, 0.00001);
+    if (transparentBackground) {
       // Alpha comes only from hatch coverage (including line antialiasing).
       // Source alpha has already shaped the strokes above; do not fade twice.
-      gl_FragColor = vec4(min(paper, ink), coverage);
+      gl_FragColor = vec4(ink, coverage);
     } else {
-      gl_FragColor = vec4(min(paper, screen), 1.0);
+      // Display-space colors: no second tone/color transform.
+      gl_FragColor = vec4(mix(backgroundColor, ink, coverage), 1.0);
     }
   }
 `;
 
 export class CrossHatchEffect {
-  constructor(renderer, { transparentPaper = false, displayColorInput = false } = {}) {
+  constructor(renderer, { transparentBackground = false, displayColorInput = false, backgroundColor = DEFAULT_PAGE_BACKGROUND, edgeFade = 0 } = {}) {
     this.renderer = renderer;
-    this.disposed = false;
-    this.paperRequest = 0;
     const halfFloat = renderer.capabilities.isWebGL2
       ? renderer.extensions.has('EXT_color_buffer_float')
       : renderer.extensions.has('EXT_color_buffer_half_float');
@@ -154,17 +163,25 @@ export class CrossHatchEffect {
     });
     this.normalTarget = new THREE.WebGLRenderTarget(1, 1, { stencilBuffer: false });
     this.normalMaterial = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+    // NoBlending preserves zero alpha while still writing depth: masked objects block
+    // contours behind them without becoming contour sources themselves.
+    this.noContourMaterial = new THREE.MeshNormalMaterial({
+      side: THREE.DoubleSide, opacity: 0, blending: THREE.NoBlending,
+    });
+    // Needles have no mesh normals, but their visible pixels still mask contours.
+    this.noContourLineMaterial = new THREE.LineBasicMaterial({
+      color: 0x000000, opacity: 0, blending: THREE.NoBlending, toneMapped: false,
+    });
     this.normalBackground = new THREE.Color().setRGB(0.5, 0.5, 1);
-    this.fallbackPaper = new THREE.DataTexture(new Uint8Array([239, 224, 190, 255]), 1, 1);
-    this.fallbackPaper.needsUpdate = true;
     this.uniforms = {
       colorTexture: { value: this.colorTarget.texture },
       normalTexture: { value: this.normalTarget.texture },
-      paperTexture: { value: this.fallbackPaper },
+      backgroundColor: { value: new THREE.Color(backgroundColor).convertLinearToSRGB() },
       resolution: { value: new THREE.Vector2(1, 1) },
       toneMappingExposure: { value: renderer.toneMappingExposure },
-      transparentPaper: { value: transparentPaper },
+      transparentBackground: { value: transparentBackground },
       displayColorInput: { value: displayColorInput },
+      edgeFade: { value: edgeFade },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
     };
     for (const { key } of HATCH_SLIDERS) this.uniforms[key] = { value: HATCH_DEFAULTS[key] };
@@ -186,30 +203,18 @@ export class CrossHatchEffect {
 
   setParameter(key, value) {
     if (key === 'inkColor') {
-      // The picker and final paper composite both use display-space RGB.
+      // The picker and final composite both use display-space RGB.
       this.uniforms.inkColor.value.set(value).convertLinearToSRGB();
     } else {
-      const slider = HATCH_SLIDERS.find(slider => slider.key === key);
+      const slider = SCENE_HATCH_SLIDERS.find(slider => slider.key === key);
       if (slider && Number.isFinite(value)) {
         this.uniforms[key].value = THREE.MathUtils.clamp(value, slider.min, slider.max);
       }
     }
   }
 
-  async setPaper(name) {
-    if (!Object.hasOwn(PAPER_TEXTURES, name)) throw new Error(`Unknown paper: ${name}`);
-    const request = ++this.paperRequest;
-    const texture = await new THREE.TextureLoader().loadAsync(PAPER_TEXTURES[name]);
-    if (this.disposed || request !== this.paperRequest) {
-      texture.dispose();
-      return false;
-    }
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    // Keep the original paper's display RGB, as in the reference shader.
-    const previous = this.uniforms.paperTexture.value;
-    this.uniforms.paperTexture.value = texture;
-    if (previous !== this.fallbackPaper) previous.dispose();
-    return true;
+  setBackground(color) {
+    this.uniforms.backgroundColor.value.set(color).convertLinearToSRGB();
   }
 
   setSize(width, height, referenceWidth = width, referenceHeight = height) {
@@ -218,7 +223,7 @@ export class CrossHatchEffect {
     this.colorTarget.setSize(width, height);
     this.normalTarget.setSize(width, height);
     // A fixed reference size lets exports increase resolution without changing
-    // the spacing, weight, paper scale, or contour of the preview's strokes.
+    // the spacing, weight, or contour of the preview's strokes.
     this.uniforms.resolution.value.set(Math.max(1, referenceWidth), Math.max(1, referenceHeight));
   }
 
@@ -230,18 +235,32 @@ export class CrossHatchEffect {
     const shadowAutoUpdate = renderer.shadowMap.autoUpdate;
     const shadowNeedsUpdate = renderer.shadowMap.needsUpdate;
     const hidden = [];
+    const materials = new Map();
+    const contourExcluded = new Set();
     try {
       renderer.setRenderTarget(this.colorTarget);
       renderer.render(scene, camera);
-      // Mesh normals don't apply to glow sprites or tree-needle line segments.
-      // They still contribute their real colors in the first pass.
+      // Glows and unmasked lines contribute only their real colors. Masked
+      // needles also write depth and zero alpha to protect their visible pixels.
       scene.traverse(object => {
-        if (object.visible && (object.isSprite || object.isLine || object.isPoints || object.userData.excludeFromNormals)) {
+        // An explicit false restores contours for exceptions such as the base.
+        const excludeContours = object.userData.excludeFromContours ?? contourExcluded.has(object.parent);
+        if (excludeContours) contourExcluded.add(object);
+        if (!object.visible) return;
+        if (object.isSprite || (object.isLine && !excludeContours) || object.isPoints || object.userData.excludeFromNormals) {
           hidden.push(object);
           object.visible = false;
+        } else if (object.isMesh || object.isLine) {
+          const material = object.material;
+          materials.set(object, material);
+          const normalMaterial = object.isLine ? this.noContourLineMaterial
+            : excludeContours ? this.noContourMaterial : this.normalMaterial;
+          // Preserve material groups and hidden surfaces in the normal pass.
+          const replace = original => original.visible ? normalMaterial : original;
+          object.material = Array.isArray(material) ? material.map(replace) : replace(material);
         }
       });
-      scene.overrideMaterial = this.normalMaterial;
+      scene.overrideMaterial = null;
       scene.background = this.normalBackground;
       renderer.shadowMap.autoUpdate = false;
       renderer.shadowMap.needsUpdate = false;
@@ -251,6 +270,7 @@ export class CrossHatchEffect {
       scene.overrideMaterial = overrideMaterial;
       scene.background = background;
       for (const object of hidden) object.visible = true;
+      for (const [object, material] of materials) object.material = material;
       renderer.shadowMap.autoUpdate = shadowAutoUpdate;
       renderer.shadowMap.needsUpdate = shadowNeedsUpdate;
       renderer.setRenderTarget(target);
@@ -260,15 +280,12 @@ export class CrossHatchEffect {
   }
 
   dispose() {
-    this.disposed = true;
-    this.paperRequest++;
     this.colorTarget.dispose();
     this.normalTarget.dispose();
     this.normalMaterial.dispose();
+    this.noContourMaterial.dispose();
+    this.noContourLineMaterial.dispose();
     this.material.dispose();
     this.quad.geometry.dispose();
-    const paper = this.uniforms.paperTexture.value;
-    if (paper !== this.fallbackPaper) paper.dispose();
-    this.fallbackPaper.dispose();
   }
 }

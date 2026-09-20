@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { CrossHatchEffect } from '../src/cross-hatch.js';
-import { LogoSphere } from '../src/logo-sphere.js';
 import { HATCH_DEFAULTS, HATCH_SLIDERS } from '../src/cross-hatch.js';
-import { LOGO_DEFAULTS, readLogoSettings, LOGO_WIDTH, LOGO_HEIGHT } from '../src/logo-settings.js';
+import { LOGO_DEFAULTS, SPHERE_CONTROLS, readLogoSettings, LOGO_WIDTH, LOGO_HEIGHT } from '../src/logo-settings.js';
+import { LogoSphere } from '../src/logo-sphere.js';
 import { createLogoSVG } from '../src/logo-export.js';
 import { WORDMARK } from '../src/logo-wordmark.js';
 
@@ -19,8 +18,67 @@ test('logo shares the complete credenza defaults and safely restores partial set
   assert.equal(settings.scale, .1);
   assert.equal(settings.injected, undefined);
   assert.deepEqual(readLogoSettings(JSON.parse(JSON.stringify(LOGO_DEFAULTS))), LOGO_DEFAULTS);
-  for (const bad of [null, [], { color1: '<script>' }, { paper: '__proto__' }, { scale: NaN },
+  for (const bad of [null, [], { color1: '<script>' }, { scale: NaN },
     { hatchEnabled: 'true' }, { exportScale: 100 }]) assert.throws(() => readLogoSettings(bad));
+});
+
+test('logo saturation restores older settings unchanged and validates saved amounts', () => {
+  const old = { ...LOGO_DEFAULTS, color1: '#123456' };
+  delete old.saturation;
+  assert.deepEqual(readLogoSettings(old), { ...old, saturation: 100 });
+  for (const [input, expected] of [[0, 0], [45, 45], [175, 175], [-5, 0], [250, 200]]) {
+    const settings = readLogoSettings({ saturation: input });
+    assert.equal(settings.saturation, expected);
+    assert.deepEqual(readLogoSettings(JSON.parse(JSON.stringify(settings))), settings);
+  }
+  for (const saturation of [NaN, Infinity, null, '50%']) assert.throws(() => readLogoSettings({ saturation }), /saturation/);
+});
+
+test('preview and export adjust the source sphere saturation before crosshatching', () => {
+  const sphere = Object.create(LogoSphere.prototype);
+  sphere.uniforms = Object.fromEntries(SPHERE_CONTROLS.map(({ key }) => [key, { value: 0 }]));
+  for (const key of ['color1', 'color2', 'color3']) sphere.uniforms[key] = { value: new THREE.Color() };
+  let rendered, sourceSaturation, dimensions;
+  function capture(mode) { rendered = mode; sourceSaturation = sphere.uniforms.saturation.value; }
+  sphere.renderer = {
+    setSize(width, height) { dimensions = [width, height]; },
+    render() { capture('smooth'); },
+  };
+  sphere.effect = {
+    setSize() {}, setParameter() {},
+    render() { capture('hatch'); },
+  };
+  for (const saturation of [0, 100, 175]) {
+    for (const hatchEnabled of [false, true]) {
+      for (const scale of [1, 3]) {
+        sphere.render({ saturation, hatchEnabled }, scale);
+        assert.equal(rendered, hatchEnabled ? 'hatch' : 'smooth');
+        assert.equal(sourceSaturation, saturation / 100);
+        assert.deepEqual(dimensions, [LOGO_WIDTH * scale, LOGO_HEIGHT * scale]);
+      }
+    }
+  }
+});
+
+test('restored logo settings always use full CMY weights and preserve other controls', () => {
+  for (const saved of [
+    { cyan: 0, magenta: .25, yellow: .75 },
+    { cyan: null, magenta: 'obsolete', yellow: -5 },
+    {},
+  ]) {
+    const settings = readLogoSettings({ ...saved, black: .35, scale: 1.2 });
+    assert.equal(settings.cyan, 1);
+    assert.equal(settings.magenta, 1);
+    assert.equal(settings.yellow, 1);
+    assert.equal(settings.black, .35);
+    assert.equal(settings.scale, 1.2);
+  }
+});
+
+test('copying Christmas hatch settings does not add a viewport fade to the logo', () => {
+  const settings = readLogoSettings({ ...LOGO_DEFAULTS, edgeFade: .5, thickness: 2 });
+  assert.equal(settings.thickness, 2);
+  assert.equal(Object.hasOwn(settings, 'edgeFade'), false);
 });
 
 test('transparent SVG has no backdrop, retains sphere alpha and fixed vector lettering', () => {
@@ -42,25 +100,4 @@ test('opaque export uses the chosen backdrop and rejects nonembedded image sourc
     assert.throws(() => createLogoSVG({}, image));
   }
   assert.throws(() => createLogoSVG({}, pixel, 20));
-});
-
-test('returning to the current paper supersedes pending selections and deduplicates identical loads', async t => {
-  const pending = [];
-  t.mock.method(THREE.TextureLoader.prototype, 'loadAsync', () => new Promise(resolve => pending.push(resolve)));
-  const sphere = Object.create(LogoSphere.prototype);
-  Object.assign(sphere, { paper: 'Parchment', paperPromise: null, paperRevision: 0 });
-  sphere.effect = new CrossHatchEffect({ capabilities: { isWebGL2: true }, extensions: { has: () => true }, toneMappingExposure: 1 });
-  const obsolete = sphere.setPaper('Craft rough');
-  const latest = sphere.setPaper('Parchment');
-  const duplicate = sphere.setPaper('Parchment');
-  assert.equal(pending.length, 2);
-  const oldTexture = new THREE.Texture(), newTexture = new THREE.Texture();
-  let oldDisposed = false;
-  oldTexture.addEventListener('dispose', () => { oldDisposed = true; });
-  pending[1](newTexture); await latest; await duplicate;
-  pending[0](oldTexture); await obsolete;
-  assert.equal(sphere.paper, 'Parchment');
-  assert.equal(sphere.effect.uniforms.paperTexture.value, newTexture);
-  assert.equal(oldDisposed, true);
-  sphere.effect.dispose();
 });

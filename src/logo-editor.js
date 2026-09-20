@@ -1,4 +1,5 @@
-import { HATCH_DEFAULTS, HATCH_SLIDERS, PAPER_TEXTURES } from './cross-hatch.js';
+import { HATCH_DEFAULTS, HATCH_SLIDERS } from './cross-hatch.js';
+import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
 import { LOGO_WIDTH, LOGO_HEIGHT, LOGO_DEFAULTS, SPHERE_CONTROLS, readLogoSettings } from './logo-settings.js';
 import { LogoSphere } from './logo-sphere.js';
 import { WORDMARK } from './logo-wordmark.js';
@@ -6,10 +7,9 @@ import { createLogoSVG, logoPNG } from './logo-export.js';
 import { STATE_COOKIE, parseSceneState, readStateCookie } from './scene-state.js';
 
 const $ = id => document.getElementById(id);
-const STORAGE_KEY = 'christmas-credenza-logo-v1';
-let settings = { ...LOGO_DEFAULTS }, sphere, frame, paperRequest = 0, exporting = false, contextLost = false;
+let settings = { ...LOGO_DEFAULTS }, sphere, frame, exporting = false, contextLost = false;
 try {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = localStorage.getItem(LOGO_STORAGE_KEY);
   if (stored) settings = readLogoSettings(JSON.parse(stored));
 } catch { /* A corrupt or inaccessible saved value must not prevent editing. */ }
 
@@ -39,8 +39,8 @@ for (const control of [...SPHERE_CONTROLS, ...HATCH_SLIDERS]) {
   row.append(caption, numberGroup, input);
   $(SPHERE_CONTROLS.includes(control) ? 'sphere-controls' : 'hatch-sliders').append(row);
 }
-for (const name of Object.keys(PAPER_TEXTURES)) $('paper').add(new Option(name, name));
 $('wordmark-preview').innerHTML = WORDMARK;
+applyPageBackground(settings.background);
 
 function status(message) { $('logo-status').textContent = message; }
 function syncControls(editedInput) {
@@ -56,32 +56,28 @@ function syncControls(editedInput) {
   }
   $('hatch-controls').disabled = !settings.hatchEnabled;
   $('hatch-controls').hidden = !settings.hatchEnabled;
-  $('background').disabled = settings.transparent;
 }
 function render() {
   frame = null;
   if (!sphere || contextLost) return;
   sphere.render(settings);
-  $('logo-preview').style.backgroundColor = settings.background;
-  $('logo-preview').classList.toggle('is-transparent', settings.transparent);
+  applyPageBackground(settings.background);
 }
 function invalidate() { if (!frame) frame = requestAnimationFrame(render); }
-async function loadPaper() {
-  if (!sphere || contextLost) return;
-  const request = ++paperRequest;
-  try {
-    await sphere.setPaper(settings.paper);
-    if (request === paperRequest) invalidate();
-  } catch {
-    if (request === paperRequest) status('Paper texture could not load. Select it again to retry.');
-  }
+function syncBackground() {
+  settings.background = readPageBackground();
+  applyPageBackground(settings.background);
+  syncControls(); invalidate();
 }
+window.addEventListener('storage', event => {
+  if (event.key === LOGO_STORAGE_KEY || event.key === null) syncBackground();
+});
+window.addEventListener('pageshow', syncBackground);
 function update(next, editedInput) {
-  const previousPaper = settings.paper;
   settings = readLogoSettings(next);
+  applyPageBackground(settings.background);
   syncControls(editedInput); invalidate();
-  if (previousPaper !== settings.paper || sphere?.paper !== settings.paper) loadPaper();
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(settings)); }
+  try { localStorage.setItem(LOGO_STORAGE_KEY, JSON.stringify(settings)); }
   catch { status('Device storage is unavailable. You can still edit and export.'); }
 }
 $('logo-controls').addEventListener('submit', event => event.preventDefault());
@@ -122,14 +118,13 @@ $('use-scene-hatch').addEventListener('click', () => {
 async function exportLogo(format) {
   if (!sphere || exporting || contextLost) return;
   exporting = true;
-  // Snapshot all settings before asynchronous paper loading or image decoding.
+  // Snapshot all settings before asynchronous image decoding.
   const snapshot = { ...settings };
   const controls = [...document.querySelectorAll('input, select, button')];
   const disabled = controls.map(input => input.disabled);
   controls.forEach(input => { input.disabled = true; });
   status(`Preparing ${format.toUpperCase()}…`);
   try {
-    if (snapshot.hatchEnabled) await sphere.setPaper(snapshot.paper);
     if (contextLost) throw new Error('Reload to restore the graphics connection.');
     sphere.render(snapshot, snapshot.exportScale);
     const png = sphere.renderer.domElement.toDataURL('image/png');
@@ -155,7 +150,7 @@ $('export-png').addEventListener('click', () => exportLogo('png'));
 syncControls();
 try {
   sphere = new LogoSphere($('sphere-preview'));
-  render(); loadPaper();
+  render();
   $('export-svg').disabled = $('export-png').disabled = false;
   status('Ready. Settings save on this device.');
   $('sphere-preview').addEventListener('webglcontextlost', event => {

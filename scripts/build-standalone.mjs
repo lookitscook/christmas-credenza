@@ -4,13 +4,13 @@ const root = new URL('../', import.meta.url);
 const read = path => readFile(new URL(path, root), 'utf8');
 const moduleURL = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const three = await read('vendor/three.module.js');
-let hatch = (await read('src/cross-hatch.js')).replace("'../vendor/three.module.js'", "'three'");
-// Inline the exact paper files so the single-file edition also works offline.
-for (const match of [...hatch.matchAll(/new URL\('([^']+\.jpg)', import\.meta\.url\)\.href/g)]) {
-  const bytes = await readFile(new URL(match[1], new URL('src/', root)));
-  hatch = hatch.replace(match[0], JSON.stringify(`data:image/jpeg;base64,${bytes.toString('base64')}`));
-}
-const post = (await read('src/post-processing.js')).replace("'./cross-hatch.js'", "'cross-hatch'");
+const background = await read('src/page-background.js');
+const hatch = (await read('src/cross-hatch.js'))
+  .replace("'../vendor/three.module.js'", "'three'")
+  .replace("'./page-background.js'", "'page-background'");
+const post = (await read('src/post-processing.js'))
+  .replace("'./cross-hatch.js'", "'cross-hatch'")
+  .replace("'./page-background.js'", "'page-background'");
 const areaLight = (await read('vendor/lights/RectAreaLightUniformsLib.js')).replace("'../three.module.js'", "'three'");
 const crtShader = await read('src/crt-shader.js');
 const crtControls = (await read('src/crt-controls.js')).replace("'./crt-shader.js'", "'crt-shader'");
@@ -33,7 +33,8 @@ let scene = (await read('src/scene.js'))
   .replace("'./tv-video.js'", "'tv-video'")
   .replace("'./effect-panels.js'", "'effect-panels'")
   .replace("'./camera-controls.js'", "'camera-controls'")
-  .replace("'./scene-state.js'", "'scene-state'");
+  .replace("'./scene-state.js'", "'scene-state'")
+  .replace("'./page-background.js'", "'page-background'");
 for (const match of [...scene.matchAll(/new URL\('([^']+\.(mp4|webm|ogv))', import\.meta\.url\)\.href/g)]) {
   const bytes = await readFile(new URL(match[1], new URL('src/', root)));
   const mime = { mp4: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg' }[match[2]];
@@ -51,9 +52,10 @@ const importMap = JSON.stringify({ imports: {
   'effect-panels': moduleURL(panels),
   'camera-controls': moduleURL(cameraControls),
   'scene-state': moduleURL(sceneState),
+  'page-background': moduleURL(background),
 } });
 let html = (await read('index.html')).replace('href="./logo/"', 'href="./logo-standalone.html"');
-for (const path of ['vendor/app-block-sandbox.css', 'src/styles.css']) {
+for (const path of ['vendor/app-block-sandbox.css', 'src/styles.css', 'src/page-background.css']) {
   html = html.replace(`<link rel="stylesheet" href="./${path}">`, `<style>\n${await read(path)}\n</style>`);
 }
 html = html.replace('<script type="module" src="./src/scene.js"></script>',
@@ -69,6 +71,7 @@ console.log(`Built standalone.html (${(Buffer.byteLength(html) / 1024 / 1024).to
 const logoImports = {
   three: moduleURL(three), 'cross-hatch': moduleURL(hatch),
   'crt-shader': moduleURL(crtShader), 'scene-state': moduleURL(sceneState),
+  'page-background': moduleURL(background),
 };
 const logoModules = ['logo-settings', 'logo-sphere', 'logo-wordmark', 'logo-export', 'logo-editor'];
 function logoSource(source) {
@@ -79,6 +82,7 @@ for (const name of logoModules) logoImports[name] = moduleURL(logoSource(await r
 let logo = (await read('logo/index.html'))
   .replace('href="../"', 'href="./standalone.html"')
   .replace('<link rel="stylesheet" href="../src/logo-editor.css">', `<style>${await read('src/logo-editor.css')}</style>`)
+  .replace('<link rel="stylesheet" href="../src/page-background.css">', `<style>${await read('src/page-background.css')}</style>`)
   .replace('<script type="module" src="../src/logo-editor.js"></script>',
     `<script type="importmap">${JSON.stringify({ imports: logoImports })}</script>\n<script type="module">import 'logo-editor';</script>`);
 const logoLicenses = await Promise.all(['vendor/THREE-LICENSE.txt', 'vendor/cross-hatch/LICENSE.txt',

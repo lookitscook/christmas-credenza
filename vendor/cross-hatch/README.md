@@ -5,9 +5,8 @@ by [spite](https://github.com/spite). [Source repository](https://github.com/spi
 MIT license, copyright (c) 2020 thespite. See LICENSE.txt.
 
 The CMYK line equations, four channel angles, normal-buffer Sobel contours,
-darken composite, parameter defaults/ranges, and four original paper textures
-come from the demo's `post-cross-hatch-ii/post.js`, `shaders/sobel.js`,
-`js/paper.js`, and `assets/` (retrieved September 14, 2026).
+and parameter defaults/ranges come from the demo's `post-cross-hatch-ii/post.js`
+and `shaders/sobel.js` (retrieved September 14, 2026).
 The original shader credits libretro's `misc/cmyk-halftone-dot.glsl` for
 the CMYK separation: https://github.com/libretro/glsl-shaders/blob/master/misc/cmyk-halftone-dot.glsl.
 
@@ -18,10 +17,14 @@ Integration changes in `src/cross-hatch.js`:
 - Convert linear scene color using the app's ACES exposure before CMYK separation.
 - Keep existing scene materials, lighting, and animation; the demo's sample objects,
   rainbow material, environment controls, and material controls are not part of this post effect.
-- Skip sprites/lines in the mesh-normal pass and restore renderer/scene state afterward.
+- Skip sprites and unmasked lines in the mesh-normal pass and restore renderer/scene state afterward.
+- Use the normal buffer's alpha as a depth-tested contour mask for the Christmas
+  tree, including needle lines, excluding its pixels and neighboring Sobel samples
+  from contours. The tree's base and star explicitly retain contours.
+- Mask the metal train rails while retaining contours on the wooden track ties.
 - Contour zero disables outlines; epsilon guards keep thickness zero well-defined.
-- Load local paper textures on demand, discard superseded loads, and dispose replaced textures.
+- Composite ink over the shared solid page color, or emit ink with transparent
+  gaps for logo exports. The original paper image layer has been removed.
+- Process the logo's edge fade and the scene's viewport-edge fade as ink density
+  before generating hatch strokes, including contour ink.
 - Ink picker colors are used in display RGB for the final composite.
-
-Paper JPEGs are unmodified 4096 × 4096 originals from
-https://spite.github.io/sketch/assets/.
