@@ -59,20 +59,24 @@ test('YUV mapping inverts pleasure and produces display sRGB without extra gamma
   assert.match(PAD_COLOR_GLSL, /1\.164, -0\.392, -0\.813/);
 });
 
-test('intensity ring positions round trip through the 270-degree sweep', () => {
+test('intensity ring positions round trip through the 300-degree sweep', () => {
   for (const intensity of [0, .1, .25, .5, .68, .9, 1]) {
     const angle = ringAngle(intensity);
     for (const radius of [1, 140, 600]) {
-      assert.ok(Math.abs(ringIntensity(Math.cos(angle) * radius, Math.sin(angle) * radius) - intensity) < 1e-10);
+      const actual = ringIntensity(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      assert.ok(Math.abs(actual - intensity) < 1e-10);
+      if (intensity === 0 || intensity === 1) assert.equal(actual, intensity);
     }
   }
   assert.ok(Math.abs(ringIntensity(0, 1) - .5) < 1e-12);
-  assert.ok(Math.cos(ringAngle(0)) > 0 && Math.sin(ringAngle(0)) < 0);
-  assert.ok(Math.cos(ringAngle(1)) < 0 && Math.sin(ringAngle(1)) < 0);
+  assert.ok(Math.cos(ringAngle(0)) < 0 && Math.sin(ringAngle(0)) < 0, 'low starts on the left');
+  assert.ok(Math.cos(ringAngle(1)) > 0 && Math.sin(ringAngle(1)) < 0, 'high ends on the right');
+  assert.ok(ringIntensity(-1, 0) < .5);
+  assert.ok(ringIntensity(1, 0) > .5);
 });
 
 test('the bottom gap and center cannot select an intensity', () => {
-  for (let degrees = 226; degrees < 315; degrees++) {
+  for (let degrees = 241; degrees < 300; degrees++) {
     const angle = THREE.MathUtils.degToRad(degrees);
     assert.equal(ringIntensity(Math.cos(angle), Math.sin(angle)), null);
   }

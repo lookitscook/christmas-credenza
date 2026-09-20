@@ -24,7 +24,7 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
       },
       get offsetWidth() { return this.textContent.length * 7 + 14; },
       offsetHeight: 22,
-      setAttribute() {}, appendChild(child) { this.children.push(child); },
+      setAttribute(name, value) { if (name === 'class') this.className = value; }, appendChild(child) { this.children.push(child); },
       append(...children) { this.children.push(...children); }, remove() {}, focus() {},
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 600 }),
       addEventListener(type, handler) { handlers.set(type, [...(handlers.get(type) || []), handler]); },
@@ -71,7 +71,7 @@ async function selector(reducedMotion = false, width = 600, height = 600) {
   const source = await readFile(new URL('../src/pad-editor.js', import.meta.url), 'utf8');
   vm.runInNewContext(source.replace(/^import .*;\n/gm, ''), {
     ...model, THREE: { ...THREE, WebGLRenderer },
-    window, document: { getElementById: id => elements[id], createElement: element }, console, AbortController,
+    window, document: { getElementById: id => elements[id], createElement: element, createElementNS: element }, console, AbortController,
     LOGO_STORAGE_KEY: 'test', readPageBackground: () => '#f3f0e6', applyPageBackground: value => value,
     pageForeground: () => '#062627', performance: { now: () => now },
     ResizeObserver: class { observe() {} disconnect() {} },
@@ -183,7 +183,11 @@ test('globe colors render separately from overlays, retaining sphere depth and s
     const overlays = overlay.calls.at(-1);
     assert.deepEqual(overlays.filter(item => !item.colorWrite), [{ object: sphere, colorWrite: false, depthWrite: true }]);
     assert.ok(overlays.some(item => item.object === marker && item.colorWrite));
-    assert.ok(overlays.filter(item => item.colorWrite).length >= 6, 'mesh, ring, track, knob, marker and halo remain on the overlay');
+    assert.ok(overlays.filter(item => item.colorWrite).length >= 3, 'mesh, marker and halo remain on the overlay');
+    assert.ok(app.elements['pad-stage'].children.some(child => child.className === 'pad-intensity-ring'),
+      'the one-pixel ring remains in the unfiltered SVG overlay');
+    assert.ok(app.elements['pad-stage'].children.some(child => child.className === 'pad-intensity-knob'),
+      'the outlined knob remains in the unfiltered HTML overlay');
     assert.equal(sphere.material.colorWrite, true, 'restore globe colors for the next frame');
     assert.deepEqual(globe.size, overlay.size);
     assert.equal(globe.pixelRatio, overlay.pixelRatio);
@@ -394,10 +398,19 @@ test('the rendered bottom gap cannot start a drag or change intensity during a r
   assert.equal(app.canvas.captured, 1);
   assert.equal(visibleLabelNames(app).length, 4);
   const value = app.elements['pad-values'].textContent;
-  assert.ok(value.endsWith('· 17%'));
+  assert.ok(value.endsWith('· 80%'));
   app.pointer('pointermove', 300, 300 + radius);
   assert.equal(app.elements['pad-values'].textContent, value);
   app.pointer('pointercancel');
+  // Include arc ends and former triangle seams: no visible part of the line
+  // may miss a drag because of mesh tessellation or projected rounding.
+  for (const intensity of [0, .1, .25, .5, .75, .9, 1]) {
+    const angle = model.ringAngle(intensity);
+    app.pointer('pointerdown', 300 + Math.cos(angle) * radius, 300 - Math.sin(angle) * radius);
+    assert.equal(app.canvas.captured, 1);
+    assert.ok(app.elements['pad-values'].textContent.endsWith(`· ${Math.round(intensity * 100)}%`));
+    app.pointer('pointercancel');
+  }
 });
 
 test('intensity changes preserve the nearest surface emotion and zero-intensity drags snap by direction', async () => {
@@ -452,7 +465,7 @@ test('emotion points follow rotation, hide on the far side, and keep clustered l
   function checkVisibilityAndLayout() {
     const facing = [];
     model.PAD_EMOTIONS.forEach(([, p, a, d], i) => {
-      const world = new THREE.Vector3(p, a, d).normalize().multiplyScalar(1.545).applyQuaternion(app.group.quaternion);
+      const world = new THREE.Vector3(p, a, d).normalize().multiplyScalar(1.535).applyQuaternion(app.group.quaternion);
       if (world.dot(new THREE.Vector3(0, 0, model.padCameraDistance(1)).sub(world)) <= 0) assert.ok(points[i].hidden);
       else facing.push(i);
       if (points[i].hidden) assert.ok(labels[i].hidden);

@@ -130,15 +130,22 @@ export function padEmotion(values) {
   return nearest.distance < .48 ? nearest.name : 'PAD';
 }
 
-export const RING_START = Math.PI * 7 / 4;
-export const RING_SWEEP = Math.PI * 3 / 2;
-export function ringAngle(intensity) { return RING_START + RING_SWEEP * intensity; }
+export const RING_START = Math.PI * 5 / 3;
+export const RING_SWEEP = Math.PI * 5 / 3;
+// The arc geometry runs counterclockwise; intensity runs the other way so its
+// low end is on the left and its high end is on the right.
+export function ringAngle(intensity) { return RING_START + RING_SWEEP * (1 - intensity); }
 
 export function ringIntensity(x, y) {
   if (x === 0 && y === 0) return null;
-  const angle = (Math.atan2(y, x) - RING_START + Math.PI * 4) % (Math.PI * 2);
-  // The bottom 90 degrees are inactive, including during a captured drag.
-  return angle > RING_SWEEP + 1e-10 ? null : Math.min(1, angle / RING_SWEEP);
+  let angle = (Math.atan2(y, x) - RING_START + Math.PI * 4) % (Math.PI * 2);
+  if (angle > Math.PI * 2 - 1e-10) angle = 0;
+  // The bottom 60 degrees are inactive, including during a captured drag.
+  if (angle > RING_SWEEP + 1e-10) return null;
+  const amount = 1 - angle / RING_SWEEP;
+  // Projecting an endpoint back to an angle can introduce rounding noise.
+  // In particular, the low endpoint must reach exact zero to select Neutral.
+  return amount < 1e-10 ? 0 : amount > 1 - 1e-10 ? 1 : amount;
 }
 
 export function padCameraDistance(aspect, fov = 34) {

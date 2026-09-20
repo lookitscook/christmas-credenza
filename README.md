@@ -8,15 +8,13 @@ The scene is `christmas-credenza-tight-3d`. Its 28,447-byte JavaScript module wa
 
 ## Run
 
-**Single file:** open `standalone.html` in a modern browser. It embeds all scene code, Three.js, CSS, and the TV video. It needs no downloads, installation, account, or server. WebGL must be available.
-
 **Local server:** with Node.js installed, open a terminal in this folder and run:
 
 ```sh
 npm start
 ```
 
-Open **http://127.0.0.1:4178/**. No `npm install` is needed for this command. Press Ctrl+C to stop the server.
+Open **http://127.0.0.1:4178/** in a browser with WebGL enabled. No `npm install` is needed for this command. Press Ctrl+C to stop the server.
 
 Drag to orbit, **hold Shift while dragging to pan up/down/left/right**, scroll or
 pinch to zoom, and use **Run train / Pause train**. **Reset view** returns to the
@@ -44,7 +42,7 @@ Settings also save automatically to a cookie for one year and restore on reload.
 Moving train/video positions are checkpointed every two seconds and saved when
 leaving or hiding the page. Playback resumes from the saved position; time spent
 away does not advance the scene. A local-storage backup supports browsers that
-block cookies and the offline `file://` edition, where cookies are unavailable.
+block cookies.
 If browser storage is disabled, JSON export/import remains available.
 Restart an already-running `npm start` process after updating the app. The current
 server supports the video byte-range requests needed to restore playback positions.
@@ -100,8 +98,7 @@ ffmpeg -i content/11543712-hd_1920_1080_30fps.mp4 \
   -an -map_metadata -1 -movflags +faststart content/11543712-256px.mp4
 ```
 
-The production build includes the selected video as a local asset. The single-file
-build embeds the same compressed clip.
+The production build includes the selected video as a local asset.
 If browser policy blocks muted autoplay, clicking the scene starts playback.
 If the video cannot load, the original screen remains visible with a status message.
 
@@ -144,10 +141,7 @@ uses the page background; **Transparent export** omits it from downloaded files.
 The chosen color is saved with the logo settings.
 
 `npm start`, Vite, and the GitHub Pages build all include the `/logo/` route.
-`npm run build` also generates **logo-standalone.html**, a self-contained offline
-editor alongside the existing **standalone.html** scene. Keep the offline files together
-to use their navigation links. Font licenses are in `vendor/fonts/` and included
-in both the production distribution and offline editor.
+Font licenses are in `vendor/fonts/` and included in the production distribution.
 
 ## PAD sphere
 
@@ -159,8 +153,14 @@ The initial view uses the selected landmark's exact direction and intensity,
 centering its point under the reticle before the first frame.
 
 Drag the colored triangle mesh to choose the Pleasure, Arousal, and Dominance
-direction, and drag the ring to change intensity. The ring has an inactive
-90-degree gap at the bottom. Releasing either drag eases rotation and intensity
+direction, and drag the ring clockwise from **low on the left to high on the
+right** to change intensity. Its dot has a fixed 1px black outline and the page
+background as its fill. The ring itself is a 1px SVG stroke using the same color
+as the horizontal rules. The compact emotion dropdown is 114px wide and sits
+below the sphere in the inactive 60-degree bottom gap, with extra vertical space
+above it. The enlarged globe reduces the previous gap to the ring by about
+one-third. The dropdown's placement scales with the viewport.
+Releasing either drag eases rotation and intensity
 to the nearest emotion landmark over 420 ms; a new drag interrupts the snap.
 Cancelled drags, lost pointer capture, and window blur also finish by snapping;
 releasing outside the canvas cannot leave the globe between landmarks.
@@ -291,8 +291,7 @@ Clipping can make different PAD values share the same saturated RGB color.
 Typography and text colors match the logo editor. The transparent canvas reveals
 the shared page background, including changes made in another open logo tab;
 the ring and knob also follow that palette. The source's dark backdrop is removed.
-`npm start`, Vite, and the production build include the route. **pad-standalone.html**
-is the companion offline version; keep it beside the other two offline files.
+`npm start`, Vite, and the production build include the route.
 
 ## Cross-hatch post-processing
 
@@ -388,9 +387,6 @@ npm run preview
 
 The production build is generated in `dist/`, which is gitignored. Upload the contents of `dist/` to a static host after building. Build output is left unminified for inspection. The official WebAssembly compiler fallback is included in the development dependencies for systems where Vite's native compiler is unavailable.
 
-`npm run build` also regenerates the offline single-file edition. Run
-`npm run build:standalone` to regenerate only that file without Vite.
-
 ## Deploy to GitHub Pages
 
 The workflow in `.github/workflows/pages.yml` follows the same build/deploy setup
@@ -412,8 +408,7 @@ under the repository URL. A custom domain configured in Pages uses `/` instead.
 No deploy token or additional secret is needed; the workflow uses `GITHUB_TOKEN`.
 
 The workflow rebuilds from source on every run. Its artifact contains the scene,
-video and license notices from `dist/`; the offline
-`standalone.html` is generated by the build but is not part of the Pages artifact.
+logo editor, PAD sphere, video, and license notices from `dist/`.
 To verify the project URL paths locally, run `BASE_PATH=/christmas-credenza/ npm run
 build`. Running `npm run build` without that variable produces portable relative paths.
 
@@ -421,7 +416,6 @@ See [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pa
 
 ## Files
 
-- `standalone.html` — complete single-file app with embedded Three.js and styles.
 - `index.html`, `src/`, `vendor/` — readable app with local dependencies.
 - `src/cross-hatch.js`, `src/post-processing.js` — optional effect and configuration controls.
 - `src/tv-video.js`, `src/crt-screen.js` — silent looping video, reflective CRT glass, glow, area light, and on/off control.
@@ -429,7 +423,6 @@ See [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pa
 - `src/camera-controls.js`, `src/scene-state.js` — constrained orbit/pan/zoom, JSON import/export, and automatic state persistence.
 - `pad/index.html`, `src/pad-editor.js`, `src/pad-model.js` — PAD sphere selector, shared palette, and YUV mapping.
 - `src/pad-landmarks.js` — all 151 Table 4 mean PAD triplets, with source attribution and original row order.
-- `scripts/build-standalone.mjs` — reproducible offline single-file packaging.
 - `.github/workflows/pages.yml`, `.nvmrc` — GitHub Pages build/deploy workflow and Node.js version.
 - `original/scene.js` — unmodified module text recovered from the requested post.
 - `original/rendered-app.html` — archived live iframe DOM, including the original host wrapper. This is a source record and retains its original external URLs; use the runnable files above.
@@ -439,7 +432,7 @@ See [GitHub's custom Pages workflow documentation](https://docs.github.com/en/pa
 
 ## Original extraction and subsequent changes
 
-The initial extraction replaced the Three.js 0.160.1 CDN import with `../vendor/three.module.js`. The app now also routes drawing and resize events through optional post-processing and adds its controls. A faceted gold star and mounting stem top the tree, and the initial camera view is wider to include them. The existing scene geometry, seed, generated textures, lighting, bulb wrapping, and train logic are preserved. `original/scene.js` remains the unmodified source record. The single-file edition uses an embedded import map for local modules and the TV video.
+The initial extraction replaced the Three.js 0.160.1 CDN import with `../vendor/three.module.js`. The app now also routes drawing and resize events through optional post-processing and adds its controls. A faceted gold star and mounting stem top the tree, and the initial camera view is wider to include them. The existing scene geometry, seed, generated textures, lighting, bulb wrapping, and train logic are preserved. `original/scene.js` remains the unmodified source record.
 
 The page wrapper uses the captured styles and a local copy of the original sandbox stylesheet. It removes the already-rendered canvas so the original code can create it again, resets the loading state, omits unused host helpers, and permits normal page scrolling. The scene keeps its original 3:2 aspect ratio.
 
@@ -453,29 +446,25 @@ The page wrapper uses the captured styles and a local copy of the original sandb
   Camera checks cover Shift-drag routing and room coverage across 500 combinations
   of orbit, pan, zoom, import, and resize. State checks cover JSON/cookie round trips,
   invalid imports, range normalization, load restoration, and page-exit saving.
-- `npm run build`: Vite production build and offline single-file packaging pass.
+- `npm run build`: Vite production build passes.
 - Chrome: effect toggling, all slider limits, ink color, reset,
-  retained settings, and train animation verified; production and single-file
-  editions rendered without shader or console errors.
+  retained settings, and train animation verified; the production build
+  rendered without shader or console errors.
 - The production view and controls fit a 390 px viewport without horizontal overflow.
-- The single-file edition was tested over HTTP; direct `file://` launch was not tested.
 
 ## Initial extraction verification
 
 - Original and packaged scene modules match after reversing the single import replacement.
-- The standalone edition contains the same scene module and exact Three.js bytes.
-- Chrome rendered the source app, single-file edition over HTTP, and Vite production build without console errors.
+- Chrome rendered the source app and Vite production build without console errors.
 - Run/Pause changed the control state and visibly moved the train.
 - JavaScript syntax checks and Vite production build passed.
-
-The browser automation policy prevents opening `file://` URLs, so direct double-click launch was not automation-tested. The identical standalone file was tested through the local server and has no external asset links.
 
 ## Third-party components
 
 Three.js 0.160.1 is bundled under MIT; see `vendor/THREE-LICENSE.txt`. Captured Tailwind CSS 3.4.17 styles are covered by `vendor/TAILWIND-LICENSE.txt`. Vite's license is included in `vendor/VITE-LICENSE.md`. No external fonts, images, or 3D models are required.
 
 Serenity Shader by Matt Sephton (@gingerbeardman) is adapted under MIT; see
-`vendor/crt/LICENSE.txt`. Its license and attribution are included in both builds.
+`vendor/crt/LICENSE.txt`. Its license and attribution are included in the production build.
 
 Cross-hatch II comes from spite/sketch under MIT; see
 `vendor/cross-hatch/LICENSE.txt` and `vendor/cross-hatch/README.md` for attribution

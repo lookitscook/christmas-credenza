@@ -22,6 +22,10 @@
     <div class="preview-caption"><span>PLEASURE · AROUSAL · DOMINANCE</span><span id="pad-landmark-count">EMOTION LANDMARKS</span></div>
     <div id="pad-stage" class="pad-stage">
       <p class="pad-message" id="pad-message" role="status">Preparing the sphere…</p>
+      <div class="pad-picker">
+        <label for="pad-landmark-picker">Explore emotions</label>
+        <select id="pad-landmark-picker"><option value="">Choose an emotion…</option></select>
+      </div>
     </div>
     <div class="pad-readout">
       <div class="pad-selection">
@@ -33,13 +37,11 @@
       </div>
       <output id="pad-values" class="pad-values" aria-label="PAD values and intensity" aria-live="off">P 0.00 · A 0.00 · D 0.00</output>
     </div>
-    <div class="pad-picker">
-      <label for="pad-landmark-picker">Explore emotions</label>
-      <select id="pad-landmark-picker"><option value="">Choose an emotion…</option></select>
+    <div class="pad-sources">
       <a href="https://doi.org/10.1016/0092-6566(77)90037-X" target="_blank" rel="noopener noreferrer">Russell &amp; Mehrabian (1977), Table 4</a>
       <a href="https://doi.org/10.3758/s13428-012-0314-x" target="_blank" rel="noopener noreferrer">Warriner, Kuperman &amp; Brysbaert (2013)</a>
     </div>
-    <p id="pad-help" class="hint">Drag to explore emotions, with up to 20 points across the visible surface. Only the four nearest the reticle have labels, and only during dragging. The dropdown shows the selected emotion when at rest. Hover over any point to inspect it, or click a point or label to select it. Drag the ring to change intensity; the bottom gap is inactive. Release to ease to the nearest emotion. The surface, reticle, and YUV swatch show the current intensity’s color; each landmark dot shows that emotion’s color. Double-click to return to neutral.</p>
+    <p id="pad-help" class="hint">Drag to explore emotions, with up to 20 points across the visible surface. Only the four nearest the reticle have labels, and only during dragging. The dropdown shows the selected emotion when at rest. Hover over any point to inspect it, or click a point or label to select it. Drag the ring clockwise from low on the left to high on the right to change intensity; the bottom gap is inactive. Release to ease to the nearest emotion. The surface, reticle, and YUV swatch show the current intensity’s color; each landmark dot shows that emotion’s color. Double-click to return to neutral.</p>
     <p id="pad-keyboard-help" class="hint pad-keyboard">Keyboard: arrow keys rotate · + / − change intensity · Home returns to neutral.</p>
   </main>
   <noscript>Enable JavaScript to use the PAD sphere.</noscript>

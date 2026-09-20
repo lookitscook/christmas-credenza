@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
-import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground, pageForeground } from './page-background.js';
-import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, RING_START, RING_SWEEP, ringAngle, ringIntensity, padCameraDistance } from './pad-model.js';
+import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
+import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance } from './pad-model.js';
 
 const stage = document.getElementById('pad-stage');
 const emotionEl = document.getElementById('pad-emotion');
@@ -70,7 +70,8 @@ function createSelector() {
 
   const group = new THREE.Group();
   scene.add(group);
-  const geometry = new THREE.IcosahedronGeometry(1.52, 3);
+  const sphereRadius = 1.51;
+  const geometry = new THREE.IcosahedronGeometry(sphereRadius, 3);
   const sphere = new THREE.Mesh(geometry, new THREE.ShaderMaterial({
     uniforms: { intensity: { value: .68 } },
     vertexShader: `varying vec3 padPosition;
@@ -97,17 +98,25 @@ function createSelector() {
   group.add(meshLines);
 
   const ringRadius = 1.86;
-  const curve = new THREE.EllipseCurve(0, 0, ringRadius, ringRadius, RING_START, RING_START + RING_SWEEP, false, 0);
-  const ringPoints = curve.getPoints(256).map(point => new THREE.Vector3(point.x, point.y, 0));
-  const ringMaterial = new THREE.LineBasicMaterial({ transparent: true, opacity: .45 });
-  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPoints), ringMaterial));
-  const trackMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: .12 });
-  const ringTrack = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, .025, 12, 160, RING_SWEEP), trackMaterial);
-  ringTrack.rotation.z = RING_START;
-  scene.add(ringTrack);
-  const knobMaterial = new THREE.MeshBasicMaterial();
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(.075, 24, 24), knobMaterial);
-  scene.add(knob);
+  let ringScreenRadius = 0;
+  // SVG keeps the visible arc at one CSS pixel and uses the same palette token
+  // as the horizontal rules. Pointer handling keeps a wider, seamless hit area.
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const ringElement = document.createElementNS(svgNamespace, 'svg');
+  ringElement.setAttribute('class', 'pad-intensity-ring');
+  ringElement.setAttribute('viewBox', '-1 -1 2 2');
+  ringElement.setAttribute('aria-hidden', 'true');
+  const ringPath = document.createElementNS(svgNamespace, 'path');
+  const lowAngle = ringAngle(0), highAngle = ringAngle(1);
+  ringPath.setAttribute('d', `M ${Math.cos(lowAngle)} ${-Math.sin(lowAngle)} A 1 1 0 1 1 ${Math.cos(highAngle)} ${-Math.sin(highAngle)}`);
+  ringElement.appendChild(ringPath);
+  stage.appendChild(ringElement);
+  // The knob's CSS outline also stays exactly one pixel at every viewport size.
+  const knobPosition = new THREE.Vector3();
+  const knobElement = document.createElement('div');
+  knobElement.className = 'pad-intensity-knob';
+  knobElement.setAttribute('aria-hidden', 'true');
+  stage.appendChild(knobElement);
   const marker = new THREE.Mesh(new THREE.SphereGeometry(.055, 20, 20), new THREE.MeshBasicMaterial({ color: 0xffffff }));
   const halo = new THREE.Mesh(new THREE.RingGeometry(.085, .115, 32),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .7, side: THREE.DoubleSide }));
@@ -139,7 +148,7 @@ function createSelector() {
     label.addEventListener('click', () => {
       if (!label.hidden) snapToEmotion({ name, p, a, d });
     }, options);
-    return { name, position: new THREE.Vector3(p, a, d).normalize().multiplyScalar(1.545), point, leader, label };
+    return { name, position: new THREE.Vector3(p, a, d).normalize().multiplyScalar(sphereRadius + .025), point, leader, label };
   });
   const pickerRows = PAD_EMOTIONS.map(([name], index) => ({ name, index }))
     .sort((a, b) => a.name.localeCompare(b.name, 'en'));
@@ -258,7 +267,14 @@ function createSelector() {
   group.quaternion.setFromUnitVectors(selectedDirection, front);
   function update(render = true) {
     const angle = ringAngle(intensity);
-    knob.position.set(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0);
+    knobPosition.set(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0);
+    camera.updateMatrixWorld();
+    const knobCenter = knobPosition.clone().project(camera);
+    const knobEdge = knobPosition.clone().add(new THREE.Vector3(.075, 0, 0)).project(camera);
+    const knobSize = (knobEdge.x - knobCenter.x) * stage.clientWidth;
+    knobElement.style.left = `${(knobCenter.x + 1) * stage.clientWidth / 2}px`;
+    knobElement.style.top = `${(1 - knobCenter.y) * stage.clientHeight / 2}px`;
+    knobElement.style.width = knobElement.style.height = `${knobSize}px`;
     const values = dirToPad(selectedDirection, intensity);
     const label = padEmotion(values);
     sphere.material.uniforms.intensity.value = intensity;
@@ -272,7 +288,7 @@ function createSelector() {
     landmarkPicker.value = selectedIndex < 0 ? '' : String(selectedIndex);
     const format = value => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
     padEl.textContent = `P ${format(values.p)} · A ${format(values.a)} · D ${format(values.d)} · ${Math.round(intensity * 100)}%`;
-    marker.position.copy(selectedDirection).multiplyScalar(1.535);
+    marker.position.copy(selectedDirection).multiplyScalar(sphereRadius + .015);
     halo.position.copy(marker.position);
     group.updateMatrixWorld(true);
     halo.lookAt(camera.position);
@@ -308,9 +324,7 @@ function createSelector() {
   }
 
   function syncBackground() {
-    const background = applyPageBackground(readPageBackground());
-    const foreground = pageForeground(background);
-    for (const material of [ringMaterial, trackMaterial, knobMaterial]) material.color.set(foreground);
+    applyPageBackground(readPageBackground());
     invalidate();
   }
   window.addEventListener('storage', event => {
@@ -320,6 +334,20 @@ function createSelector() {
   syncBackground();
 
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+  function overIntensityControl(event, rect = canvas.getBoundingClientRect()) {
+    const x = event.clientX - rect.left - rect.width / 2;
+    const y = rect.top + rect.height / 2 - event.clientY;
+    const onArc = Math.abs(Math.hypot(x, y) - ringScreenRadius) <= 6 && ringIntensity(x, y) !== null;
+    const angle = ringAngle(intensity);
+    const onKnob = Math.hypot(x - Math.cos(angle) * ringScreenRadius, y - Math.sin(angle) * ringScreenRadius)
+      <= Math.max(6, ringScreenRadius * .075 / ringRadius);
+    return onArc || onKnob;
+  }
+  function updateCursor(event) {
+    canvas.classList.toggle('is-over-intensity', overIntensityControl(event));
+  }
+  canvas.addEventListener('pointerenter', updateCursor, options);
+  canvas.addEventListener('pointerleave', () => canvas.classList.toggle('is-over-intensity', false), options);
   function changeIntensity(event) {
     const rect = canvas.getBoundingClientRect();
     const next = ringIntensity(event.clientX - rect.left - rect.width / 2, rect.top + rect.height / 2 - event.clientY);
@@ -334,7 +362,7 @@ function createSelector() {
     scene.updateMatrixWorld(true);
     camera.updateMatrixWorld();
     raycaster.setFromCamera(pointer, camera);
-    if (raycaster.intersectObjects([ringTrack, knob], false).length) dragMode = 'ring';
+    if (overIntensityControl(event, rect)) dragMode = 'ring';
     else if (raycaster.intersectObject(sphere, false).length) dragMode = 'sphere';
     else return;
     snap = null;
@@ -348,6 +376,7 @@ function createSelector() {
     if (dragMode === 'ring') changeIntensity(event);
   }, options);
   canvas.addEventListener('pointermove', event => {
+    updateCursor(event);
     if (event.pointerId !== activePointer) return;
     // Recover if the mouse was released outside the window and its pointerup
     // was missed. Do not keep rotating after the button is already up.
@@ -407,6 +436,10 @@ function createSelector() {
     camera.aspect = width / height;
     camera.position.set(0, 0, padCameraDistance(camera.aspect, camera.fov));
     camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    const ringEdge = new THREE.Vector3(ringRadius, 0, 0).project(camera);
+    ringScreenRadius = ringEdge.x * width / 2;
+    stage.style.setProperty('--pad-ring-size', `${ringScreenRadius * 2}px`);
     update();
   }
   const resizeObserver = new ResizeObserver(resize);
@@ -422,7 +455,7 @@ function createSelector() {
     snap = null;
     listeners.abort(); resizeObserver.disconnect();
     if (frame !== null) cancelAnimationFrame(frame);
-    labelLayer.remove();
+    labelLayer.remove(); knobElement.remove(); ringElement.remove();
     const geometries = new Set(), materials = new Set();
     scene.traverse(object => {
       if (object.geometry) geometries.add(object.geometry);
