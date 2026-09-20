@@ -85,6 +85,37 @@ function visibleLabelNames(app) {
     .map(label => label.textContent);
 }
 
+function assertReticleCentered(app) {
+  const stage = app.elements['pad-stage'];
+  const index = Number(app.elements['pad-landmark-picker'].value);
+  const layer = stage.children.find(child => child.className === 'pad-landmarks');
+  const point = layer.children.filter(child => child.className === 'pad-landmark-point')[index];
+  assert.equal(app.elements['pad-emotion'].textContent, model.PAD_EMOTIONS[index][0]);
+  assert.equal(point.hidden, false);
+  assert.ok(Math.abs(parseFloat(point.style.left) - stage.clientWidth / 2) < 1e-8);
+  assert.ok(Math.abs(parseFloat(point.style.top) - stage.clientHeight / 2) < 1e-8);
+  const marker = app.group.children.find(child => child.geometry?.parameters?.radius === .055);
+  const center = marker.getWorldPosition(new THREE.Vector3());
+  assert.ok(Math.hypot(center.x, center.y) < 1e-12);
+}
+
+test('the selected landmark is centered under the reticle on the first frame and after resizing', async () => {
+  const app = await selector();
+  assertReticleCentered(app);
+  const [name, p, a, d] = model.PAD_EMOTIONS[Number(app.elements['pad-landmark-picker'].value)];
+  assert.equal(name, 'Inspired');
+  const sphere = app.group.children.find(child => child.material?.isShaderMaterial);
+  assert.equal(sphere.material.uniforms.intensity.value, Math.max(Math.abs(p), Math.abs(a), Math.abs(d)));
+  assert.equal(app.elements['pad-color-value'].textContent, model.padColorHex(p, a, d).toUpperCase());
+  assert.deepEqual(visibleLabelNames(app), []);
+  assert.equal(app.frames.size, 0, 'initial centering must not wait for a snap animation');
+  app.elements['pad-stage'].clientWidth = 320;
+  app.elements['pad-stage'].clientHeight = 280;
+  app.window.fire('resize');
+  app.tick(16);
+  assertReticleCentered(app);
+});
+
 test('globe colors render separately from overlays, retaining sphere depth and synchronized canvases', async () => {
   const app = await selector();
   const globe = app.renderers.find(renderer => renderer.domElement.className === 'pad-globe');
@@ -121,7 +152,7 @@ test('globe colors render separately from overlays, retaining sphere depth and s
 
 test('drag release eases to an exact emotion and stops rendering when settled', async () => {
   const app = await selector();
-  assert.deepEqual(visibleLabelNames(app), [app.elements['pad-emotion'].textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
   app.pointer('pointerdown');
   app.pointer('pointermove', 340, 325);
   assert.equal(visibleLabelNames(app).length, 4);
@@ -135,8 +166,10 @@ test('drag release eases to an exact emotion and stops rendering when settled', 
   assert.deepEqual(visibleLabelNames(app), []);
   app.tick(420);
   assert.ok(halfway.angleTo(app.group.quaternion) > .0001);
+  assertReticleCentered(app);
   assert.equal(app.elements['pad-emotion'].textContent, expected.name);
-  assert.deepEqual(visibleLabelNames(app), [expected.name]);
+  assert.equal(app.elements['pad-landmark-picker'].value, String(model.PAD_EMOTIONS.findIndex(([name]) => name === expected.name)));
+  assert.deepEqual(visibleLabelNames(app), []);
   const result = model.dirToPad(new THREE.Vector3(0, 0, 1).applyQuaternion(app.group.quaternion.clone().invert()),
     Math.max(Math.abs(expected.p), Math.abs(expected.a), Math.abs(expected.d)));
   assert.ok(Math.hypot(result.p - expected.p, result.a - expected.a, result.d - expected.d) < 1e-10);
@@ -145,7 +178,7 @@ test('drag release eases to an exact emotion and stops rendering when settled', 
   assert.equal(app.frames.size, 0);
 });
 
-test('picker and point transitions hide labels until arrival, and only dragging restores nearby labels', async () => {
+test('picker and point selections keep labels hidden, and only dragging reveals nearby labels', async () => {
   const app = await selector();
   const picker = app.elements['pad-landmark-picker'];
   picker.value = String(model.PAD_EMOTIONS.findIndex(([name]) => name === 'Happy'));
@@ -154,42 +187,45 @@ test('picker and point transitions hide labels until arrival, and only dragging 
   app.tick(419);
   assert.deepEqual(visibleLabelNames(app), []);
   app.tick(420);
-  assert.deepEqual(visibleLabelNames(app), ['Happy']);
+  assert.deepEqual(visibleLabelNames(app), []);
   const layer = app.elements['pad-stage'].children.find(child => child.className === 'pad-landmarks');
   const points = layer.children.filter(child => child.className === 'pad-landmark-point');
   const leaders = layer.children.filter(child => child.className === 'pad-landmark-leader');
-  assert.equal(leaders.filter(leader => !leader.hidden).length, 1);
+  assert.equal(leaders.filter(leader => !leader.hidden).length, 0);
   assert.ok(points.filter(point => !point.hidden).length > 4);
   const nextIndex = points.findIndex((point, i) => !point.hidden && model.PAD_EMOTIONS[i][0] !== 'Happy');
   const next = points[nextIndex];
   next.fire('pointerenter');
-  assert.deepEqual(visibleLabelNames(app), ['Happy']);
+  assert.deepEqual(visibleLabelNames(app), []);
   next.fire('click');
   assert.deepEqual(visibleLabelNames(app), []);
   app.tick(630);
   next.fire('pointerenter');
   assert.deepEqual(visibleLabelNames(app), []);
   app.tick(840);
-  assert.deepEqual(visibleLabelNames(app), [model.PAD_EMOTIONS[nextIndex][0]]);
+  assertReticleCentered(app);
+  assert.deepEqual(visibleLabelNames(app), []);
+  assert.equal(picker.value, String(nextIndex));
   app.pointer('pointerdown');
   assert.equal(visibleLabelNames(app).length, 4);
   app.pointer('pointercancel');
   app.tick(1300);
-  assert.deepEqual(visibleLabelNames(app), [app.elements['pad-emotion'].textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
   app.canvas.fire('keydown', { key: 'ArrowRight' });
-  assert.deepEqual(visibleLabelNames(app), [app.elements['pad-emotion'].textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
 });
 
-test('clicking a label fades outgoing labels and reveals only the destination after snapping', async () => {
+test('clicking a label fades all labels and keeps them hidden after snapping', async () => {
   const app = await selector();
   const layer = app.elements['pad-stage'].children.find(child => child.className === 'pad-landmarks');
   const labels = layer.children.filter(child => child.className === 'pad-landmark-label');
   const leaders = layer.children.filter(child => child.className === 'pad-landmark-leader');
   const selected = app.elements['pad-emotion'].textContent;
-  assert.deepEqual(visibleLabelNames(app), [selected]);
+  assert.deepEqual(visibleLabelNames(app), []);
   const hidden = labels.find(label => label.hidden);
   hidden.fire('click');
-  assert.deepEqual(visibleLabelNames(app), [selected], 'fading-out labels are not clickable');
+  assert.deepEqual(visibleLabelNames(app), [], 'hidden labels are not clickable');
+  assert.equal(app.elements['pad-emotion'].textContent, selected);
 
   app.pointer('pointerdown');
   const destination = labels.find(label => !label.hidden && label.textContent !== selected);
@@ -202,9 +238,9 @@ test('clicking a label fades outgoing labels and reveals only the destination af
     assert.ok(leaders.every(leader => leader.hidden));
   }
   app.tick(420);
-  assert.deepEqual(visibleLabelNames(app), [destination.textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
   assert.equal(app.elements['pad-emotion'].textContent, destination.textContent);
-  assert.equal(leaders.filter(leader => !leader.hidden).length, 1);
+  assert.equal(leaders.filter(leader => !leader.hidden).length, 0);
 });
 
 test('new drags interrupt snapping, cancelled drags do not snap, and reset stays neutral', async () => {
@@ -236,7 +272,7 @@ test('the rendered bottom gap cannot start a drag or change intensity during a r
   const radius = 1.86 * 300 / 2.08;
   app.pointer('pointerdown', 300, 300 + radius);
   assert.equal(app.canvas.captured, null);
-  assert.deepEqual(visibleLabelNames(app), [app.elements['pad-emotion'].textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
   app.pointer('pointerdown', 300 + radius, 300);
   assert.equal(app.canvas.captured, 1);
   assert.equal(visibleLabelNames(app).length, 4);
@@ -266,7 +302,7 @@ test('intensity changes preserve the nearest surface emotion and zero-intensity 
   }
   app.pointer('pointerup', ...position(0));
   assert.equal(app.elements['pad-emotion'].textContent, 'Happy');
-  assert.deepEqual(visibleLabelNames(app), ['Happy']);
+  assert.deepEqual(visibleLabelNames(app), []);
   assert.ok(app.elements['pad-values'].textContent.endsWith('· 81%'));
   app.elements['pad-neutral'].fire('click');
   assert.equal(app.elements['pad-emotion'].textContent, 'Neutral');
@@ -285,7 +321,7 @@ test('reduced motion snaps immediately without animating', async () => {
   assert.ok(result.angleTo(app.group.quaternion) < 1e-7);
   assert.equal(app.frames.size, 0);
   assert.notEqual(app.elements['pad-emotion'].textContent, 'PAD');
-  assert.deepEqual(visibleLabelNames(app), [app.elements['pad-emotion'].textContent]);
+  assert.deepEqual(visibleLabelNames(app), []);
 });
 
 test('emotion points follow rotation, hide on the far side, and keep clustered labels apart', async () => {
@@ -343,10 +379,11 @@ test('reticle and displayed YUV color agree through intensity changes, snapping,
     assert.equal(app.elements['pad-color-swatch'].style.backgroundColor, hex);
     assert.equal(app.elements['pad-color-value'].textContent, hex.toUpperCase());
   }
-  const initial = model.dirToPad({ x: .55, y: .42, z: .25 }, .68);
-  checkColor(initial.p, initial.a, initial.d);
+  const [, initialP, initialA, initialD] = model.PAD_EMOTIONS[Number(app.elements['pad-landmark-picker'].value)];
+  checkColor(initialP, initialA, initialD);
   app.canvas.fire('keydown', { key: '+' });
-  const brighter = model.dirToPad({ x: .55, y: .42, z: .25 }, .73);
+  const brighter = model.dirToPad({ x: initialP, y: initialA, z: initialD },
+    Math.min(1, Math.max(Math.abs(initialP), Math.abs(initialA), Math.abs(initialD)) + .05));
   checkColor(brighter.p, brighter.a, brighter.d);
   app.pointer('pointerdown');
   app.pointer('pointermove', 340, 325);
@@ -379,6 +416,7 @@ test('every curated emotion can be selected exactly and its surface intensity ma
     picker.value = option.value;
     picker.fire('change');
     assert.equal(app.elements['pad-emotion'].textContent, name);
+    assertReticleCentered(app);
     const intensity = sphere.material.uniforms.intensity.value;
     assert.equal(intensity, Math.max(Math.abs(p), Math.abs(a), Math.abs(d)));
     const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(app.group.quaternion.clone().invert());
@@ -390,7 +428,7 @@ test('every curated emotion can be selected exactly and its surface intensity ma
   assert.equal(sphere.material.uniforms.intensity.value, 0);
 });
 
-test('all landmarks remain available on narrow screens and the selected label stays readable', async () => {
+test('all landmarks stay selectable on narrow screens and only drag labels remain readable', async () => {
   const app = await selector(true, 320, 280);
   const picker = app.elements['pad-landmark-picker'];
   const layer = app.elements['pad-stage'].children.find(child => child.className === 'pad-landmarks');
@@ -401,14 +439,17 @@ test('all landmarks remain available on narrow screens and the selected label st
     picker.value = String(index);
     picker.fire('change');
     const label = labels[index];
-    assert.equal(label.hidden, false, `${label.textContent} must stay visible when selected`);
-    assert.deepEqual(visibleLabelNames(app), [label.textContent]);
+    assert.equal(label.hidden, true, `${label.textContent} must stay hidden when selected at rest`);
+    assert.equal(picker.value, String(index));
+    assert.deepEqual(visibleLabelNames(app), []);
     assert.ok(points.filter(point => !point.hidden).length <= 20);
-    const x = parseFloat(label.style.left), y = parseFloat(label.style.top);
-    assert.ok(x >= 0 && y >= 0 && x + label.offsetWidth <= 320 && y + label.offsetHeight <= 280);
     app.pointer('pointerdown');
     app.pointer('pointermove', 310, 300);
     assert.equal(visibleLabelNames(app).length, 4);
+    for (const visible of labels.filter(item => !item.hidden)) {
+      const x = parseFloat(visible.style.left), y = parseFloat(visible.style.top);
+      assert.ok(x >= 0 && y >= 0 && x + visible.offsetWidth <= 320 && y + visible.offsetHeight <= 280);
+    }
     const direction = new THREE.Vector3(0, 0, 1).applyQuaternion(app.group.quaternion.clone().invert());
     const distance = i => direction.angleTo(new THREE.Vector3(...model.PAD_EMOTIONS[i].slice(1)));
     const nearest = points.map((point, i) => ({ point, i })).filter(({ point }) => !point.hidden)

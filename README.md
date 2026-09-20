@@ -155,6 +155,8 @@ Open **PAD sphere** from either editor, or visit **/pad/**. This brings in the
 selector from the supplied `pad-sphere-threejs` project (found in `~/Downloads/`),
 with a corrected YUV color mapping, 64 curated emotion landmarks, a selection
 marker, and intensity ring. It uses the existing bundled Three.js without new dependencies.
+The initial view uses the selected landmark's exact direction and intensity,
+centering its point under the reticle before the first frame.
 
 Drag the colored triangle mesh to choose the Pleasure, Arousal, and Dominance
 direction, and drag the ring to change intensity. The ring has an inactive
@@ -182,10 +184,10 @@ direction; Love's direction sits close to Fascinated and is not reserved a slot.
 
 Up to **20 points** appear on both desktop and narrow screens, with labels only
 for the **four nearest the reticle along the globe's surface** during an active drag.
-On page load and whenever the sphere is idle, only the selected emotion's label
-appears. Starting a snap fades out the previous labels; the destination's label
-fades in only when it arrives, without nearby labels appearing along the way.
-Resetting to neutral hides all labels until the next drag or selection.
+Labels and their leader lines stay hidden on page load, while idle, and throughout
+snapping. Ending or cancelling a drag fades them out until the next drag.
+The dropdown continues to show the selected emotion, including after clicking a
+point or label or choosing an emotion directly.
 The four nearest points always get display slots.
 The selection and hovered point also remain visible when
 front-facing; hover shows a tooltip without replacing any of the four labels.

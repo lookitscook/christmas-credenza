@@ -175,11 +175,11 @@ function createSelector() {
       visible.push(landmark);
     }
     const displayed = visiblePadEmotions(visible, selectedDirection, selectedLabel, hoveredLandmark);
-    // Fade outgoing labels as a snap starts; reveal the destination only once
-    // it arrives. Nearby labels are reserved for an active drag.
-    const labeled = snap ? [] : activePointer !== null
+    // Labels and leaders are only visible during a drag. The picker keeps
+    // showing the selection while idle or snapping.
+    const labeled = activePointer !== null && !snap
       ? nearestPadLabels(displayed, selectedDirection)
-      : displayed.filter(landmark => landmark.name === selectedLabel);
+      : [];
     for (const landmark of displayed) landmark.point.hidden = false;
     // Keep labels clear of the reticle, all points, and each other.
     const occupied = [{ x: width / 2 - 18, y: height / 2 - 18, w: 36, h: 36 },
@@ -234,9 +234,12 @@ function createSelector() {
     }
   }
 
-  let intensity = .68;
+  // Start at the exact landmark nearest the default view, not just a direction
+  // near it, so the selected point is under the reticle on the first frame.
+  const initialEmotion = nearestPadEmotion({ p: .55, a: .42, d: .25 });
+  let intensity = Math.max(Math.abs(initialEmotion.p), Math.abs(initialEmotion.a), Math.abs(initialEmotion.d));
   const front = new THREE.Vector3(0, 0, 1);
-  const selectedDirection = new THREE.Vector3(.55, .42, .25).normalize();
+  const selectedDirection = new THREE.Vector3(initialEmotion.p, initialEmotion.a, initialEmotion.d).normalize();
   group.quaternion.setFromUnitVectors(selectedDirection, front);
   function update(render = true) {
     const angle = ringAngle(intensity);
