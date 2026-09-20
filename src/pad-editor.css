@@ -12,7 +12,11 @@
 .pad-landmarks .pad-landmark-point { z-index: 2; width: 8px; height: 8px; min-height: 0; padding: 0; border-radius: 50%; background: #062627; border: 1px solid #fff; box-shadow: 0 0 0 1px #062627; transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; }
 .pad-landmarks .pad-landmark-point.is-selected { z-index: 4; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #062627; }
 .pad-landmark-leader { height: 1px; background: var(--page-foreground); box-shadow: 0 1px 0 var(--page-background); transform-origin: left center; opacity: .7; }
-.pad-landmark-label { z-index: 3; padding: 2px 6px; border: 1px solid var(--page-border); border-radius: 4px; background: var(--page-background); color: var(--page-foreground); font: 500 11px/16px system-ui, sans-serif; white-space: nowrap; }
+.pad-landmark-label { z-index: 3; padding: 2px 6px; border: 1px solid var(--page-border); border-radius: 4px; background: var(--page-background); color: var(--page-foreground); font: 500 11px/16px system-ui, sans-serif; white-space: nowrap; pointer-events: auto; cursor: pointer; user-select: none; }
+.pad-landmark-label, .pad-landmark-leader { transition: opacity 180ms ease; }
+/* Keep labels measurable during fade-out, but disable their hit targets as soon
+   as they start leaving. The native picker provides accessible selection. */
+.pad-landmarks .pad-landmark-label[hidden], .pad-landmarks .pad-landmark-leader[hidden] { display: block; opacity: 0; pointer-events: none; }
 .pad-landmark-label.is-selected { border-color: var(--page-foreground); font-weight: 700; }
 .pad-readout { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 14px 24px; padding-top: 20px; border-top: 1px solid var(--page-border); }
 .pad-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
@@ -25,6 +29,9 @@
 .pad-emotion { font-size: clamp(28px, 4vw, 46px); font-weight: 500; letter-spacing: -1px; line-height: 1.15; }
 .pad-values { color: var(--page-foreground); font-size: 14px; font-variant-numeric: tabular-nums; }
 .pad-keyboard { font-size: 12px; margin-top: 5px; }
+@media (prefers-reduced-motion: reduce) {
+  .pad-landmark-label, .pad-landmark-leader { transition: none; }
+}
 @media (max-width: 600px) {
   .pad-layout { padding: 20px 18px 24px; }
   .pad-stage { height: clamp(280px, calc(100svh - 370px), 650px); }

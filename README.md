@@ -150,7 +150,7 @@ in both the production distribution and offline editor.
 
 Open **PAD sphere** from either editor, or visit **/pad/**. This brings in the
 selector from the supplied `pad-sphere-threejs` project (found in `~/Downloads/`),
-with a corrected YUV color mapping, all 151 original emotion landmarks, a selection
+with a corrected YUV color mapping, 64 curated emotion landmarks, a selection
 marker, and intensity ring. It uses the existing bundled Three.js without new dependencies.
 
 Drag the colored triangle mesh to choose the Pleasure, Arousal, and Dominance
@@ -162,12 +162,54 @@ neutral** to set intensity to zero. With the sphere focused, arrow keys rotate,
 +/− change intensity, and Home returns to neutral. The whole ring stays visible
 on narrow screens.
 
-All 151 emotion landmarks appear as points on the sphere and rotate with the
-mesh. Far-side points are hidden. Labels prioritize the current selection,
-hovered point, and nearby emotions, with up to 12 desktop or 6 narrow-screen labels
-spread apart using leader lines. Click a point or use **Explore all 151 emotions**
-to select any exact landmark, including its intensity. The points project PAD
-directions onto the surface; the ring retains the third dimension.
+The selector uses **40 positive, 11 negative, and 13 neutral/mixed moods**, keeping
+roughly the requested 4:1 positive-to-negative mix across its vocabulary. Happy,
+Sad, Angry, and Ennui are retained. The reviewed allowlist
+in `src/pad-model.js` excludes sexual terms, including Aroused. Mood categories
+and familiarity order are editorial choices, not classifications from the studies.
+The dropdown is alphabetical. Near-synonyms are consolidated, preferring the
+1977 entry. Examples include Grateful/Thankful, Relaxed/Calm/Mellow, Surprised/Astonished, and
+Sleepy/Drowsy. Anxious and Confused use the original paper rather than the later
+Anxiety and Bewildered ratings. Point tooltips identify the source year and term.
+Overwhelmed uses its 1977 values `(0.14, 0.45, −0.24)` to cover a less crowded
+direction; Love's direction sits close to Fascinated and is not reserved a slot.
+
+Up to **20 points** appear on both desktop and narrow screens, with labels only
+for the **four nearest the reticle in screen space** during an active drag.
+On page load and whenever the sphere is idle, only the selected emotion's label
+appears. Starting a snap fades out the previous labels; the destination's label
+fades in only when it arrives, without nearby labels appearing along the way.
+Resetting to neutral hides all labels until the next drag or selection.
+The four nearest points always get display slots.
+The selection and hovered point also remain visible when
+front-facing; hover shows a tooltip without replacing any of the four labels.
+Remaining points fill the largest angular gaps, preferring 1977 landmarks over
+supplemental terms when separation differs by at most three degrees, then using
+valence and familiarity order. Labels
+avoid the reticle, point markers, and one another, with leader lines when offset.
+Labels and their leader lines fade in and out with a 180 ms CSS opacity transition;
+reduced-motion preferences disable the fade.
+
+The measured positions are preserved. The per-view mix follows the visible
+hemisphere rather than imposing quotas that would leave gaps; some views have
+fewer than 20 front-facing points. The expanded vocabulary uses **44 original
+landmarks and 20 supplementary word ratings** to improve angular coverage.
+
+The additions to the 52-term set were chosen for distinct meanings and spatial
+coverage, favoring 1977 entries when angular separation was comparable:
+
+- 1977: Affectionate, Dignified, Repentant, Selfish, Vigorous.
+- Supplemental: Assertive, Emotional, Empathy, Receptive, Relief, Resilient, Resolute.
+
+A check across 5,000 uniformly distributed directions reduces the largest sampled
+gap to a landmark from **41.2° to 36.4°**, and the share of directions more than
+30° from a landmark from **6.02% to 1.78%**. These checks use the actual measured
+directions; no coordinates are shifted to force an even distribution.
+
+Click a point or label, or use **Explore emotions**, to select any of the 64 exact landmarks,
+including its intensity. Snapping and emotion readouts use this same curated set.
+The points project PAD directions onto the surface; the ring retains the third
+dimension. The source data still preserves all 151 original terms.
 
 The surface, reticle, and **YUV color** swatch update together throughout dragging
 and snapping. Each landmark dot uses its own measured PAD color. The swatch also
@@ -180,6 +222,19 @@ contains exactly 151 distinct terms and their reported P/A/D means on [-1, +1];
 it does not substitute SDs, regression coefficients, or invented synonyms.
 Source: [paper scan](https://emotiondevelopmentlab.weebly.com/uploads/2/5/2/0/25200250/russell_j.a.__mehrabian_a._1977.pdf),
 [DOI: 10.1016/0092-6566(77)90037-X](https://doi.org/10.1016/0092-6566(77)90037-X).
+
+Supplementary entries in `src/pad-warriner.js` come from **Warriner, Kuperman &
+Brysbaert (2013)**, *Norms of valence, arousal, and dominance for 13,915 English
+lemmas*. They are affective word ratings, not additional 1977 emotion measurements.
+The file retains each original word, CSV ID, and aggregate `V.Mean.Sum`,
+`A.Mean.Sum`, and `D.Mean.Sum` from the publisher's `BRM-emot-submit.csv` supplement.
+Each 1–9 mean becomes `(mean − 5) / 4` on [-1, +1], with valence used as pleasure.
+For example, Content's means `(6.70, 3.17, 5.92)` map to PAD `(0.425, −0.4575, 0.23)`.
+The file preserves the 32 imported rows for provenance; only 20 distinct
+supplemental concepts remain selectable. Existing 1977 terms keep their original
+values and names. Sources:
+[paper](https://doi.org/10.3758/s13428-012-0314-x),
+[publisher data](https://media.springernature.com/original/springer-static/esm/art%3A10.3758%2Fs13428-012-0314-x/MediaObjects/13428_2012_314_MOESM1_ESM.zip).
 
 The app's color mapping uses **D → Y, P → U (inverted), A → V**, retaining the
 supplied project's video-range coefficients:
@@ -198,10 +253,18 @@ encoding. The same matrix generates both the JavaScript mapping and sphere shade
 For example, Table 4's Happy maps to `#FFBA00`, Angry to `#FF51FF`, and Sad to
 `#194EF2`. Color is an app visualization, not a measurement supplied by the paper.
 The supplied generated “152 emotions” image contains duplicated/extra terms and
-swatches inconsistent with its stated axis mapping; it is not an exact data or
-color reference for the original 151 terms. The linked conversation's available
-thread shows generated charts but no conversion coefficients, so the formula
-above makes the implementation explicit.
+swatches that do not match the formula above at the published PAD coordinates.
+Its axis labels alone do not specify the conversion matrix and scaling, and
+the PNG does not contain the underlying numerical mapping. The app retains
+the explicit formula rather than adjusting values or colors to fit the image.
+For Angry, raw RGB `(286.150, 80.843, 297.035)` is clipped to `(255, 81, 255)`;
+clipping cannot turn that magenta result into the atlas's red swatch.
+
+Landmark dots use their own exact PAD values. The surface, reticle, and swatch
+use the current direction and intensity, so their colors can vary while the
+nearest-emotion readout still shows the same name. Selecting a landmark or
+finishing a snap restores its exact coordinates and matching color at the reticle.
+Clipping can make different PAD values share the same saturated RGB color.
 
 Typography and text colors match the logo editor. The transparent canvas reveals
 the shared page background, including changes made in another open logo tab;

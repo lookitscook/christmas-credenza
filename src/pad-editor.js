@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground, pageForeground } from './page-background.js';
-import { PAD_LANDMARKS, PAD_COLOR_GLSL, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, RING_START, RING_SWEEP, ringAngle, ringIntensity, padCameraDistance } from './pad-model.js';
+import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, RING_START, RING_SWEEP, ringAngle, ringIntensity, padCameraDistance } from './pad-model.js';
 
 const stage = document.getElementById('pad-stage');
 const emotionEl = document.getElementById('pad-emotion');
@@ -10,6 +10,7 @@ const neutralButton = document.getElementById('pad-neutral');
 const colorSwatch = document.getElementById('pad-color-swatch');
 const colorValue = document.getElementById('pad-color-value');
 const landmarkPicker = document.getElementById('pad-landmark-picker');
+document.getElementById('pad-landmark-count').textContent = `${PAD_EMOTIONS.length} EMOTION LANDMARKS`;
 applyPageBackground(readPageBackground());
 
 function createSelector() {
@@ -27,6 +28,7 @@ function createSelector() {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   let frame = null, disposed = false, snap = null;
+  let activePointer = null, dragMode = null, lastX = 0, lastY = 0;
   function invalidate() {
     if (frame !== null || disposed) return;
     frame = requestAnimationFrame(now => {
@@ -94,25 +96,31 @@ function createSelector() {
   labelLayer.setAttribute('aria-hidden', 'true');
   stage.appendChild(labelLayer);
   let hoveredLandmark = null;
-  const landmarks = PAD_LANDMARKS.map(([name, p, a, d], index) => {
+  const landmarks = PAD_EMOTIONS.map(([name, p, a, d]) => {
     const point = document.createElement('button');
     point.className = 'pad-landmark-point';
     point.type = 'button';
     point.tabIndex = -1; // The native picker provides keyboard access to every term.
     point.style.backgroundColor = padColorHex(p, a, d);
-    point.title = `${index + 1}. ${name}: P ${p.toFixed(2)}, A ${a.toFixed(2)}, D ${d.toFixed(2)}`;
+    const source = padEmotionSource(name);
+    point.title = `${name}: P ${p.toFixed(2)}, A ${a.toFixed(2)}, D ${d.toFixed(2)} · ${source.year}, ${source.term}`;
     const leader = document.createElement('span');
     leader.className = 'pad-landmark-leader';
     const label = document.createElement('span');
     label.className = 'pad-landmark-label';
     label.textContent = name;
+    label.hidden = leader.hidden = true;
     labelLayer.append(point, leader, label);
     point.addEventListener('pointerenter', () => { hoveredLandmark = name; updateLandmarks(emotionEl.textContent); }, options);
     point.addEventListener('pointerleave', () => { hoveredLandmark = null; updateLandmarks(emotionEl.textContent); }, options);
     point.addEventListener('click', () => snapToEmotion({ name, p, a, d }), options);
+    label.addEventListener('click', () => {
+      if (!label.hidden) snapToEmotion({ name, p, a, d });
+    }, options);
     return { name, position: new THREE.Vector3(p, a, d).normalize().multiplyScalar(1.545), point, leader, label };
   });
-  const pickerRows = PAD_LANDMARKS.map(([name], index) => ({ name, index })).sort((a, b) => a.name.localeCompare(b.name));
+  const pickerRows = PAD_EMOTIONS.map(([name], index) => ({ name, index }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'en'));
   for (const { name, index } of pickerRows) {
     const option = document.createElement('option');
     option.value = String(index);
@@ -121,7 +129,7 @@ function createSelector() {
   }
   landmarkPicker.addEventListener('change', () => {
     if (landmarkPicker.value === '') return;
-    const row = PAD_LANDMARKS[Number(landmarkPicker.value)];
+    const row = PAD_EMOTIONS[Number(landmarkPicker.value)];
     if (!row) return;
     const [name, p, a, d] = row;
     snapToEmotion({ name, p, a, d });
@@ -134,8 +142,7 @@ function createSelector() {
       const world = landmark.position.clone().applyQuaternion(group.quaternion);
       // Hide points on the far side, accounting for the perspective camera.
       const facing = world.dot(camera.position.clone().sub(world)) > 0;
-      landmark.point.hidden = !facing;
-      landmark.leader.hidden = landmark.label.hidden = true;
+      landmark.point.hidden = true;
       if (!facing) continue;
       const projected = world.project(camera);
       landmark.x = (projected.x + 1) * width / 2;
@@ -146,32 +153,49 @@ function createSelector() {
       landmark.label.classList.toggle('is-selected', landmark.name === selectedLabel);
       visible.push(landmark);
     }
-    // Keep text clear of the reticle, other points, and previously placed labels.
+    const reticle = { x: width / 2, y: height / 2 };
+    const displayed = visiblePadEmotions(visible, reticle, selectedLabel, hoveredLandmark);
+    // Fade outgoing labels as a snap starts; reveal the destination only once
+    // it arrives. Nearby labels are reserved for an active drag.
+    const labeled = snap ? [] : activePointer !== null
+      ? nearestPadLabels(displayed, reticle)
+      : displayed.filter(landmark => landmark.name === selectedLabel);
+    for (const landmark of displayed) landmark.point.hidden = false;
+    // Keep labels clear of the reticle, all points, and each other.
     const occupied = [{ x: width / 2 - 18, y: height / 2 - 18, w: 36, h: 36 },
-      ...visible.map(({ x, y }) => ({ x: x - 6, y: y - 6, w: 12, h: 12 }))];
-    const priority = landmark => landmark.name === hoveredLandmark ? -2 : landmark.name === selectedLabel ? -1
-      : Math.hypot(landmark.x - width / 2, landmark.y - height / 2);
-    const labeled = [...visible].sort((a, b) => priority(a) - priority(b)).slice(0, width < 500 ? 6 : 12);
+      ...displayed.map(({ x, y }) => ({ x: x - 6, y: y - 6, w: 12, h: 12 }))];
+    const positioned = new Set();
     for (const landmark of labeled) {
-      landmark.label.hidden = false;
       const w = landmark.label.offsetWidth, h = landmark.label.offsetHeight;
       let best, bestScore = Infinity;
+      function consider(x, y, distance) {
+        const overlap = occupied.reduce((area, box) => area
+          + Math.max(0, Math.min(x + w + 3, box.x + box.w) - Math.max(x - 3, box.x))
+          * Math.max(0, Math.min(y + h + 3, box.y + box.h) - Math.max(y - 3, box.y)), 0);
+        const score = overlap > 0 ? Infinity : distance;
+        if (score < bestScore) { bestScore = score; best = { x, y, w, h }; }
+      }
       for (let offset = 0; offset <= height; offset += h + 4) {
         for (const sign of offset ? [-1, 1] : [1]) {
           for (const side of [1, -1]) {
             const x = Math.max(4, Math.min(width - w - 4, landmark.x + (side === 1 ? 12 : -w - 12)));
             const y = Math.max(4, Math.min(height - h - 4, landmark.y - h / 2 + offset * sign));
-            const overlap = occupied.reduce((area, box) => area
-              + Math.max(0, Math.min(x + w + 3, box.x + box.w) - Math.max(x - 3, box.x))
-              * Math.max(0, Math.min(y + h + 3, box.y + box.h) - Math.max(y - 3, box.y)), 0);
-            const score = overlap * 1000 + offset + (side === -1 ? 1 : 0);
-            if (score < bestScore) { bestScore = score; best = { x, y, w, h }; }
+            consider(x, y, offset + (side === -1 ? 1 : 0));
           }
         }
-        if (bestScore < 1000) break;
+        if (best) break;
       }
-      if (bestScore >= 1000) { landmark.label.hidden = true; continue; }
-      landmark.leader.hidden = false;
+      // Dense clusters can block both adjacent columns on small screens. Search
+      // the remaining space before dropping one of the four nearest labels.
+      if (!best) {
+        for (let y = 4; y <= height - h - 4; y += 8) {
+          for (let x = 4; x <= width - w - 4; x += 8) {
+            consider(x, y, Math.hypot(x + w / 2 - landmark.x, y + h / 2 - landmark.y));
+          }
+        }
+      }
+      if (!best) continue;
+      positioned.add(landmark);
       occupied.push(best);
       landmark.label.style.left = `${best.x}px`;
       landmark.label.style.top = `${best.y}px`;
@@ -182,6 +206,11 @@ function createSelector() {
       landmark.leader.style.top = `${landmark.y}px`;
       landmark.leader.style.width = `${Math.hypot(dx, dy)}px`;
       landmark.leader.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+    }
+    // Commit visibility once, after measuring and positioning. Resetting it
+    // during layout would interrupt CSS fades on every rotation frame.
+    for (const landmark of landmarks) {
+      landmark.label.hidden = landmark.leader.hidden = !positioned.has(landmark);
     }
   }
 
@@ -201,7 +230,7 @@ function createSelector() {
     colorValue.textContent = hex.toUpperCase();
     colorSwatch.title = `${label} — YUV mapped color ${hex.toUpperCase()}`;
     if (emotionEl.textContent !== label) emotionEl.textContent = label;
-    const selectedIndex = PAD_LANDMARKS.findIndex(([name]) => name === label);
+    const selectedIndex = PAD_EMOTIONS.findIndex(([name]) => name === label);
     landmarkPicker.value = selectedIndex < 0 ? '' : String(selectedIndex);
     const format = value => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
     padEl.textContent = `P ${format(values.p)} · A ${format(values.a)} · D ${format(values.d)} · ${Math.round(intensity * 100)}%`;
@@ -213,6 +242,7 @@ function createSelector() {
     if (render) invalidate();
   }
   function snapToEmotion(emotion = nearestPadEmotion(dirToPad(selectedDirection, intensity))) {
+    releaseDrag();
     snap = null;
     const direction = new THREE.Vector3(emotion.p, emotion.a, emotion.d).normalize();
     const correction = new THREE.Quaternion().setFromUnitVectors(direction.applyQuaternion(group.quaternion), front);
@@ -226,9 +256,10 @@ function createSelector() {
       return;
     }
     snap = { started: performance.now(), from: group.quaternion.clone(), to, intensityFrom: intensity, intensityTo };
+    updateLandmarks(emotionEl.textContent);
     invalidate();
   }
-  function neutral() { snap = null; intensity = 0; update(); }
+  function neutral() { releaseDrag(); snap = null; intensity = 0; update(); }
   function rotate(dx, dy) {
     const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(dy * .006, dx * .006, 0, 'XYZ'));
     group.quaternion.premultiply(rotation);
@@ -249,7 +280,6 @@ function createSelector() {
   syncBackground();
 
   const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
-  let activePointer = null, dragMode = null, lastX = 0, lastY = 0;
   function changeIntensity(event) {
     const rect = canvas.getBoundingClientRect();
     const next = ringIntensity(event.clientX - rect.left - rect.width / 2, rect.top + rect.height / 2 - event.clientY);
@@ -268,8 +298,9 @@ function createSelector() {
     else if (raycaster.intersectObject(sphere, false).length) dragMode = 'sphere';
     else return;
     snap = null;
-    event.preventDefault();
     activePointer = event.pointerId;
+    updateLandmarks(emotionEl.textContent);
+    event.preventDefault();
     lastX = event.clientX; lastY = event.clientY;
     canvas.focus({ preventScroll: true });
     canvas.setPointerCapture(event.pointerId);
@@ -281,11 +312,16 @@ function createSelector() {
     else if (dragMode === 'sphere') rotate(event.clientX - lastX, event.clientY - lastY);
     lastX = event.clientX; lastY = event.clientY;
   }, options);
+  function releaseDrag() {
+    const pointerId = activePointer;
+    activePointer = dragMode = null;
+    if (pointerId !== null && canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+  }
   function endDrag(event) {
     if (event.pointerId !== activePointer) return;
-    activePointer = dragMode = null;
-    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    releaseDrag();
     if (event.type === 'pointerup') snapToEmotion();
+    else updateLandmarks(emotionEl.textContent);
   }
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(type, endDrag, options);
   canvas.addEventListener('dblclick', neutral, options);

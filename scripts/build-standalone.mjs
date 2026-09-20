@@ -96,7 +96,7 @@ console.log(`Built logo-standalone.html (${(Buffer.byteLength(logo) / 1024 / 102
 
 // PAD selector shares Three.js and the same page palette without network assets.
 const padImports = { three: moduleURL(three), 'page-background': moduleURL(background) };
-for (const name of ['pad-landmarks', 'pad-model', 'pad-editor']) padImports[name] = moduleURL(portableSource(await read(`src/${name}.js`)));
+for (const name of ['pad-landmarks', 'pad-warriner', 'pad-model', 'pad-editor']) padImports[name] = moduleURL(portableSource(await read(`src/${name}.js`)));
 let pad = (await read('pad/index.html'))
   .replace('href="../"', 'href="./standalone.html"')
   .replace('href="../logo/"', 'href="./logo-standalone.html"');
