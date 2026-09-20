@@ -12,6 +12,7 @@ const linearChannel = Float32Array.from({ length: 256 }, (_, byte) => {
 export function createTVVideo({ src, screen, root, invalidate }) {
   const status = root.querySelector('[data-tv-status]');
   const toggle = root.querySelector('[data-action="tv-video"]');
+  const showStatus = text => { if (status) status.textContent = text; };
   const stage = root.querySelector('.scene-stage');
   const videoDescription = stage.getAttribute('aria-label');
   const video = document.createElement('video');
@@ -88,13 +89,13 @@ export function createTVVideo({ src, screen, root, invalidate }) {
   function setEnabled(value) {
     if (disposed) return;
     enabled = value;
-    toggle.setAttribute('aria-pressed', String(enabled));
-    toggle.textContent = enabled ? 'TV video: On' : 'TV video: Off';
+    toggle?.setAttribute('aria-pressed', String(enabled));
+    if (toggle) toggle.textContent = enabled ? 'TV video: On' : 'TV video: Off';
     stage.setAttribute('aria-label', enabled ? videoDescription
       : videoDescription.replace('playing a silent looping video', 'displaying its original reflective screen texture'));
     crt.setEnabled(enabled && hasFrame && !video.error);
     controls.setAvailable(enabled && hasFrame && !video.error);
-    status.textContent = '';
+    showStatus('');
     if (enabled) play();
     else { video.pause(); stopFrameUpdates(); }
     invalidate();
@@ -152,9 +153,9 @@ export function createTVVideo({ src, screen, root, invalidate }) {
       await video.play();
     } catch (error) {
       if (disposed || !enabled || error.name === 'AbortError') return;
-      status.textContent = error.name === 'NotAllowedError'
+      showStatus(error.name === 'NotAllowedError'
         ? 'Click the scene to start the TV video.'
-        : 'The TV video could not play. Check that the video file is available and supported.';
+        : 'The TV video could not play. Check that the video file is available and supported.');
     }
   }
 
@@ -183,7 +184,7 @@ export function createTVVideo({ src, screen, root, invalidate }) {
   }, options);
   video.addEventListener('playing', () => {
     if (!enabled) { video.pause(); return; }
-    status.textContent = '';
+    showStatus('');
     if (frameCallback === null && animationFrame === null) updateFrame();
   }, options);
   video.addEventListener('error', () => {
@@ -191,11 +192,11 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     crt.setEnabled(false);
     controls.setAvailable(false);
     stopFrameUpdates();
-    if (enabled) status.textContent = 'The TV video could not load. Check that the video file is available and supported.';
+    if (enabled) showStatus('The TV video could not load. Check that the video file is available and supported.');
     invalidate();
   }, options);
-  toggle.addEventListener('click', () => setEnabled(!enabled), options);
-  toggle.disabled = false;
+  toggle?.addEventListener('click', () => setEnabled(!enabled), options);
+  if (toggle) toggle.disabled = false;
   // Muted autoplay normally succeeds; retry on interaction if the browser blocks it.
   const retry = () => { if (video.paused) play(); };
   root.addEventListener('pointerdown', retry, options);
@@ -219,7 +220,7 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     crt.dispose();
     texture.dispose();
     frameCanvas.width = frameCanvas.height = 1;
-    toggle.disabled = true;
+    if (toggle) toggle.disabled = true;
     controls.dispose();
   }
 

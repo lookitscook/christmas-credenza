@@ -8,6 +8,23 @@ export function createCRTControls(root, crt, invalidate) {
   const options = { signal: listeners.signal };
   const controls = new Map();
   const parameters = { ...CRT_DEFAULTS };
+  if (!fieldset) {
+    let shaderEnabled = true;
+    return {
+      getState: () => ({ enabled: shaderEnabled, parameters: { ...parameters } }),
+      setState(state) {
+        shaderEnabled = state.enabled;
+        for (const { key } of CRT_CONTROLS) {
+          parameters[key] = state.parameters[key];
+          crt.setParameter(key, parameters[key]);
+        }
+        crt.setShaderEnabled(shaderEnabled);
+        invalidate();
+      },
+      setAvailable() {},
+      dispose() { listeners.abort(); },
+    };
+  }
   const sections = new Map();
   for (const setting of CRT_CONTROLS) {
     const { group, key, label, min, max, step, percent } = setting;

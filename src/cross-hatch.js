@@ -49,6 +49,7 @@ const fragmentShader = `
   uniform float contour;
   uniform float black;
   uniform float edgeFade;
+  uniform vec4 circleCutout;
   uniform bool transparentBackground;
   uniform bool displayColorInput;
   varying vec2 vUv;
@@ -126,6 +127,14 @@ const fragmentShader = `
       vec2 edgeDensity = smoothstep(vec2(0.0), vec2(fadeWidth), edgeDistance);
       cmy *= edgeDensity.x * edgeDensity.y;
     }
+    if (circleCutout.z > 0.0) {
+      // The opening removes ink density before screening, just like edgeFade.
+      // Normalized center, radius, and feather keep it circular at every DPR.
+      float unit = min(resolution.x, resolution.y);
+      float distanceFromCenter = length((vUv - circleCutout.xy) * resolution);
+      cmy *= smoothstep(circleCutout.z * unit,
+        (circleCutout.z + circleCutout.w) * unit, distanceFromCenter);
+    }
     float key = min(cmy.x, min(cmy.y, cmy.z));
     vec2 uv = scale * vUv;
     // CMY weights are always 1 in both editors.
@@ -181,6 +190,7 @@ export class CrossHatchEffect {
       transparentBackground: { value: transparentBackground },
       displayColorInput: { value: displayColorInput },
       edgeFade: { value: edgeFade },
+      circleCutout: { value: new THREE.Vector4(0, 0, 0, 0) },
       inkColor: { value: new THREE.Color(HATCH_DEFAULTS.inkColor) },
       black: { value: HATCH_DEFAULTS.black },
     };
@@ -210,6 +220,15 @@ export class CrossHatchEffect {
 
   setBackground(color) {
     this.uniforms.backgroundColor.value.set(color).convertLinearToSRGB();
+  }
+
+  setCircleCutout(cutout = null) {
+    if (!cutout) this.uniforms.circleCutout.value.set(0, 0, 0, 0);
+    else {
+      const { x, y, radius, feather } = cutout;
+      if (![x, y, radius, feather].every(Number.isFinite)) return;
+      this.uniforms.circleCutout.value.set(x, y, Math.max(0, radius), Math.max(.00001, feather));
+    }
   }
 
   setSize(width, height, referenceWidth = width, referenceHeight = height) {

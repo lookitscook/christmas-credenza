@@ -1,17 +1,20 @@
 // Change this path to choose the video shown on the television.
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
+import { sceneCircleCutout } from './scene-cutout.js';
 const pageBackground = applyPageBackground(readPageBackground());
 const TV_VIDEO_URL = new URL('../content/11543712-256px.mp4', import.meta.url).href;
 const root = document.getElementById('christmas-credenza-tight-3d');
 const stage = root.querySelector('.scene-stage');
 const message = root.querySelector('.scene-message');
+const presentation = root.hasAttribute('data-presentation');
+const cutout = root.querySelector('[data-scene-cutout]');
 try {
   const THREE = await import('../vendor/three.module.js');
   const { createPostProcessing } = await import('./post-processing.js');
   const { createTVVideo } = await import('./tv-video.js');
   const { createEffectPanels } = await import('./effect-panels.js');
   const { createCameraRig, attachCameraControls, CAMERA_DEFAULTS } = await import('./camera-controls.js');
-  const { createScenePersistence, STATE_APP, STATE_VERSION } = await import('./scene-state.js');
+  const { createScenePersistence, SCENE_DEFAULTS, STATE_APP, STATE_VERSION } = await import('./scene-state.js');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(pageBackground);
   const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
@@ -301,24 +304,39 @@ try {
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
   const tvVideo=createTVVideo({src:TV_VIDEO_URL,screen:glass,root,invalidate});
   let persistence;
-  function resize(){const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);renderer.getDrawingBufferSize(drawingSize);postProcessing.setSize(drawingSize.x,drawingSize.y);camera.aspect=w/h;camera.updateProjectionMatrix();cameraRig.resize();invalidate();persistence?.scheduleSave();}
-  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);resize();
-  const cameraControls=attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
-  root.querySelector('[data-action="reset-view"]').addEventListener('click',()=>{cameraRig.setState(CAMERA_DEFAULTS);invalidate();});
+  function resize(){
+    const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+    renderer.setSize(w,h,false);renderer.getDrawingBufferSize(drawingSize);
+    postProcessing.setSize(drawingSize.x,drawingSize.y);
+    if(cutout){
+      const feather=parseFloat(getComputedStyle(cutout).getPropertyValue('--scene-cutout-feather'));
+      postProcessing.setCircleCutout(sceneCircleCutout(stage.getBoundingClientRect(),cutout.getBoundingClientRect(),Number.isFinite(feather)?feather:28));
+    }
+    camera.aspect=w/h;
+    // Preserve the scene's horizontal composition in a portrait hero instead
+    // of cropping the tree and lamp away on phones.
+    if(presentation)camera.fov=THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(18))*Math.max(1,1.7/camera.aspect)));
+    camera.updateProjectionMatrix();cameraRig.resize();invalidate();persistence?.scheduleSave();
+  }
+  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);if(cutout)resizeObserver.observe(cutout);resize();
+  const cameraControls=presentation?null:attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
+  root.querySelector('[data-action="reset-view"]')?.addEventListener('click',()=>{cameraRig.setState(CAMERA_DEFAULTS);invalidate();});
   let prevTime=0,trainFrame=null;
   function placeWheels(){for(const w of wheels)w.hub.rotation.z=(wheelTravel/w.r)%(2*Math.PI);}
   function animate(t){trainFrame=null;if(!runTrain || !root.isConnected){prevTime=0;return;}const dt=prevTime?Math.min((t-prevTime)/1000,.05):0;prevTime=t;trainS=(trainS+dt*.11)%loopLength;wheelTravel+=dt*.11;placeTrain();placeWheels();invalidate();trainFrame=requestAnimationFrame(animate);}
   const trainButton=root.querySelector('[data-action="train"]');
-  function setTrainRunning(value){runTrain=value;prevTime=0;if(trainFrame!==null)cancelAnimationFrame(trainFrame);trainFrame=null;trainButton.textContent=runTrain?'Pause train':'Run train';trainButton.setAttribute('aria-pressed',String(runTrain));if(runTrain)trainFrame=requestAnimationFrame(animate);}
-  trainButton.addEventListener('click',()=>setTrainRunning(!runTrain));
+  function setTrainRunning(value){runTrain=value;prevTime=0;if(trainFrame!==null)cancelAnimationFrame(trainFrame);trainFrame=null;if(trainButton){trainButton.textContent=runTrain?'Pause train':'Run train';trainButton.setAttribute('aria-pressed',String(runTrain));}if(runTrain)trainFrame=requestAnimationFrame(animate);}
+  trainButton?.addEventListener('click',()=>setTrainRunning(!runTrain));
   function getState(){return {app:STATE_APP,version:STATE_VERSION,camera:cameraRig.getState(),train:{running:runTrain,position:trainS,wheelTravel},...tvVideo.getState(),...postProcessing.getState(),panels:panels.getState()};}
   function applyState(state){
     cameraRig.setState(state.camera);
     trainS=state.train.position%loopLength;wheelTravel=state.train.wheelTravel;placeTrain();placeWheels();setTrainRunning(state.train.running);
     tvVideo.setState(state);postProcessing.setState(state);panels.setState(state.panels);invalidate();
   }
-  persistence=createScenePersistence(root,getState,applyState);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence.dispose();setTrainRunning(false);cameraControls.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  // The homepage shares the scene defaults without saving over the editor.
+  if(presentation)applyState(SCENE_DEFAULTS);
+  else persistence=createScenePersistence(root,getState,applyState);
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';

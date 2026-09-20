@@ -35,6 +35,20 @@ function fixture() {
   return { renderer, scene, effect, sprite, line, invisible, glow, cabinet, bulb, socket, originalTarget };
 }
 
+test('circular ink-density opening is opt-in and can be resized or cleared without changing editor settings', () => {
+  const { effect } = fixture();
+  assert.deepEqual(effect.uniforms.circleCutout.value.toArray(), [0, 0, 0, 0]);
+  effect.setCircleCutout({ x: .8, y: 0, radius: .3, feather: .05 });
+  effect.setSize(2000, 1200);
+  assert.deepEqual(effect.uniforms.circleCutout.value.toArray(), [.8, 0, .3, .05]);
+  effect.setCircleCutout({ x: NaN, y: 0, radius: 1, feather: .1 });
+  assert.deepEqual(effect.uniforms.circleCutout.value.toArray(), [.8, 0, .3, .05]);
+  effect.setCircleCutout(null);
+  assert.deepEqual(effect.uniforms.circleCutout.value.toArray(), [0, 0, 0, 0]);
+  assert.equal(effect.uniforms.edgeFade.value, 0);
+  effect.dispose();
+});
+
 for (const failNormalPass of [false, true]) {
   test(`render restores scene and renderer state${failNormalPass ? ' after an error' : ''}`, () => {
     const { renderer, scene, effect, sprite, line, invisible, glow, cabinet, bulb, socket, originalTarget } = fixture();

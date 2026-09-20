@@ -9,8 +9,14 @@ export function createPostProcessing(renderer, root, invalidate, panels, backgro
   let effect = null;
   let active = false;
   let width = 1, height = 1;
+  let circleCutout = null;
 
   for (const { key, label, min, max, percent } of SCENE_HATCH_SLIDERS) {
+    // A presentation uses the same effect and settings without editor widgets.
+    if (!grid) {
+      controls.set(key, value => { params[key] = value; effect?.setParameter(key, value); });
+      continue;
+    }
     const control = document.createElement('label');
     control.className = 'hatch-control';
     control.htmlFor = `hatch-${key}`;
@@ -41,27 +47,33 @@ export function createPostProcessing(renderer, root, invalidate, panels, backgro
   }
 
   function setEffect(name, openPanel = false) {
-    select.value = name;
+    if (select) select.value = name;
     active = name === 'cross-hatch';
     if (active && openPanel) panels.setOpen('hatch', true);
     if (active && !effect) {
       effect = new CrossHatchEffect(renderer, { backgroundColor });
       effect.setSize(width, height);
+      effect.setCircleCutout(circleCutout);
       for (const { key } of SCENE_HATCH_SLIDERS) effect.setParameter(key, params[key]);
     }
     invalidate();
   }
-  select.addEventListener('change', () => setEffect(select.value, true));
+  select?.addEventListener('change', () => setEffect(select.value, true));
   function setParameters(values) {
     for (const [key, update] of controls) update(values[key] ?? SCENE_HATCH_DEFAULTS[key]);
     invalidate();
   }
-  root.querySelector('[data-action="reset-hatch"]').addEventListener('click', () => setParameters(SCENE_HATCH_DEFAULTS));
-  select.disabled = false;
+  root.querySelector('[data-action="reset-hatch"]')?.addEventListener('click', () => setParameters(SCENE_HATCH_DEFAULTS));
+  if (select) select.disabled = false;
 
   return {
     getState() { return { effect: active ? 'cross-hatch' : 'none', hatch: { ...params } }; },
     setState(state) { setParameters(state.hatch); setEffect(state.effect); },
+    setCircleCutout(value) {
+      circleCutout = value;
+      effect?.setCircleCutout(value);
+      invalidate();
+    },
     setBackground(color) {
       backgroundColor = color;
       effect?.setBackground(color);

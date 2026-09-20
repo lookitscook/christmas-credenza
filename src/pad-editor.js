@@ -408,7 +408,7 @@ function createSelector() {
   // Browsers can synthesize dblclick after two quick drags. Only stationary
   // double-clicks should reset; a drag must retain its centered destination.
   canvas.addEventListener('dblclick', () => { if (!lastDragMoved && !previousDragMoved) neutral(); }, options);
-  neutralButton.addEventListener('click', neutral, options);
+  neutralButton?.addEventListener('click', neutral, options);
   canvas.addEventListener('keydown', event => {
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '+', '=', '-', '_', 'Home'].includes(event.key)) return;
     snap = null;
@@ -447,7 +447,7 @@ function createSelector() {
   window.addEventListener('resize', resize, options);
   resize();
   message.hidden = true;
-  neutralButton.disabled = false;
+  if (neutralButton) neutralButton.disabled = false;
 
   function dispose() {
     if (disposed) return;
@@ -466,7 +466,7 @@ function createSelector() {
     for (const layer of renderers) layer.dispose();
   }
   for (const layer of renderers) layer.domElement.addEventListener('webglcontextlost', event => {
-    event.preventDefault(); dispose(); neutralButton.disabled = true;
+    event.preventDefault(); dispose(); if (neutralButton) neutralButton.disabled = true;
     message.hidden = false; message.textContent = 'The graphics connection was lost. Reload to restore the sphere.';
   }, options);
   window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, options);

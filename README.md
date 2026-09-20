@@ -32,6 +32,24 @@ Project defaults were captured from the local logo and credenza editors on
 panel visibility. Existing browser saves still take precedence. Reset controls
 restore the corresponding captured defaults.
 
+## Homepage preview
+
+Open **http://127.0.0.1:4178/home/** for the combined homepage. It uses the small
+Big Feeling logo, the live Christmas scene, and the same interactive PAD sphere
+as the editors. Navigation sits on the left on desktop and across the top on
+mobile. The sphere sits in a circular opening near the image's lower right on
+desktop and at its bottom center on mobile.
+
+The opening fades ink density in the shared cross-hatch shader before drawing
+strokes, so hatching runs naturally into the page background. Its position and
+radius follow the sphere's actual layout, including resizing and display scale.
+The Christmas presentation uses the captured scene defaults without modifying
+saved editor settings. The logo follows its saved local settings. Headings use
+locally bundled Literata; body copy and navigation use locally bundled Inter.
+
+Layout and placeholder copy: `home/index.html` and `src/home.css`. This route is
+included in the normal Vite build; it does not generate standalone HTML editions.
+
 ## Save and restore
 
 **Save JSON** downloads `christmas-credenza-settings.json`. **Import JSON** restores

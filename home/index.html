@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Big Feeling — a place to explore how you feel.">
+  <title>Big Feeling — Home</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../src/page-background.css">
+  <link rel="stylesheet" href="../src/pad-editor.css">
+  <link rel="stylesheet" href="../src/home.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="home-menu">
+    <a class="home-logo" href="./" aria-label="Big Feeling home" aria-current="page">
+      <canvas id="home-logo-sphere" aria-hidden="true"></canvas>
+      <svg id="home-wordmark" viewBox="0 0 1169 1142" aria-hidden="true"></svg>
+    </a>
+    <nav class="home-nav" aria-label="Main navigation">
+      <a class="home-nav-current" href="./" aria-current="page">Home</a>
+      <a href="../">Christmas</a>
+      <a href="../logo/">Logo</a>
+      <a href="../pad/">Emotions</a>
+    </nav>
+  </header>
+  <main id="main" class="home-main">
+    <article class="home-article">
+      <div id="christmas-credenza-tight-3d" class="home-feature" data-presentation>
+        <div class="scene-stage" role="img" aria-label="A cross-hatched Christmas scene: a wooden credenza, a vintage television playing a silent looping video, a table lamp, a blue model train, and a tree with colored lights and a golden star.">
+          <p class="scene-message" role="status">Preparing the Christmas scene…</p>
+        </div>
+        <div id="pad-stage" class="pad-stage" role="group" aria-label="Explore how you feel">
+          <span class="home-cutout" data-scene-cutout aria-hidden="true"></span>
+          <p class="pad-message" id="pad-message" role="status">Preparing the sphere…</p>
+          <div class="pad-picker">
+            <label for="pad-landmark-picker">Explore emotions</label>
+            <select id="pad-landmark-picker"><option value="">Choose an emotion…</option></select>
+          </div>
+        </div>
+        <p class="sr-only" role="status" data-tv-status></p>
+      </div>
+      <div class="home-heading">
+        <h1>Lorem ipsum<br>dolor sit amet.</h1>
+      </div>
+      <div class="home-body">
+        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+        <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+        <p>Curabitur blandit tempus porttitor. Maecenas faucibus mollis interdum. Aenean lacinia bibendum nulla sed consectetur. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla.</p>
+      </div>
+    </article>
+    <div class="sr-only">
+      <span id="pad-emotion" role="status">Neutral</span>
+      <span id="pad-landmark-count">Emotion landmarks</span>
+      <span id="pad-color-swatch" aria-hidden="true"></span>
+      <output id="pad-color-value" aria-label="Selected YUV color in sRGB hexadecimal" aria-live="off">—</output>
+      <output id="pad-values" aria-label="PAD values and intensity" aria-live="off">P 0.00 · A 0.00 · D 0.00</output>
+      <p id="pad-help">Drag the sphere to explore emotions. Four nearby labels appear while dragging; release to select the nearest emotion. The outer ring changes intensity from low on the left to high on the right. Choose an emotion with the dropdown, or double-click the sphere to reset.</p>
+      <p id="pad-keyboard-help">Arrow keys rotate. Plus and minus change intensity. Home returns to neutral.</p>
+    </div>
+    <noscript>Enable JavaScript to view the Christmas scene and explore the emotion sphere.</noscript>
+  </main>
+  <script type="module" src="../src/home.js"></script>
+  <script type="module" src="../src/scene.js"></script>
+  <script type="module" src="../src/pad-editor.js"></script>
+</body>
+</html>
