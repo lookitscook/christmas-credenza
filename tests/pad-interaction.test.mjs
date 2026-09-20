@@ -28,6 +28,7 @@ async function selector(reducedMotion = false, width = 600, height = 600, contro
       append(...children) { this.children.push(...children); }, remove() {}, focus() {},
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 600, height: 600 }),
       addEventListener(type, handler) { handlers.set(type, [...(handlers.get(type) || []), handler]); },
+      dispatchEvent(event) { this.fire(event.type, { detail: event.detail }); return true; },
       fire(type, values = {}) {
         for (const handler of handlers.get(type) || []) handler({ type, preventDefault() {}, ...values });
       },
@@ -72,7 +73,7 @@ async function selector(reducedMotion = false, width = 600, height = 600, contro
   const source = await readFile(new URL('../src/pad-editor.js', import.meta.url), 'utf8');
   vm.runInNewContext(source.replace(/^import .*;\n/gm, ''), {
     ...model, THREE: { ...THREE, WebGLRenderer },
-    window, document: { getElementById: id => elements[id], createElement: element, createElementNS: element }, console, AbortController,
+    window, document: { getElementById: id => elements[id], createElement: element, createElementNS: element }, console, AbortController, CustomEvent,
     LOGO_STORAGE_KEY: 'test', readPageBackground: () => '#f3f0e6', applyPageBackground: value => value,
     pageForeground: () => '#062627', performance: { now: () => now },
     ResizeObserver: class { observe() {} disconnect() {} },
@@ -97,6 +98,43 @@ function visibleLabelNames(app) {
   return layer.children.filter(child => child.className === 'pad-landmark-label' && !child.hidden)
     .map(label => label.textContent);
 }
+
+test('live logo subscribers receive the color-only frame during rendering, including snaps, intensity, resize, and late subscription', async () => {
+  const app = await selector();
+  const stage = app.elements['pad-stage'];
+  const surface = app.renderers.find(renderer => renderer.domElement.className === 'pad-globe');
+  const overlay = app.renderers.find(renderer => renderer.domElement.className === 'pad-overlay');
+  const received = [];
+  stage.addEventListener('pad-color-frame', event => {
+    assert.equal(event.detail.canvas, surface.domElement);
+    assert.equal(surface.calls.length, overlay.calls.length + 1);
+    assert.equal(surface.calls.at(-1).length, 1, 'the source pass contains only the colored sphere');
+    received.push({ crop: Array.from(event.detail.crop), rotation: app.group.quaternion.clone(),
+      intensity: surface.calls.at(-1)[0].object.material.uniforms.intensity.value });
+  });
+  stage.requestPadColorFrame();
+  app.tick(10);
+  assert.equal(received.length, 1);
+  assert.deepEqual(received[0].crop, model.padSphereCrop(1));
+  const picker = app.elements['pad-landmark-picker'];
+  picker.value = String(model.PAD_EMOTIONS.findIndex(([name]) => name === 'Sad'));
+  picker.fire('change');
+  app.tick(220);
+  app.tick(430);
+  assert.equal(received.length, 3);
+  assert.ok(received[0].rotation.angleTo(received[1].rotation) > .01);
+  assert.ok(received[1].rotation.angleTo(received[2].rotation) > .01);
+  app.canvas.fire('keydown', { key: '-' });
+  app.tick(450);
+  assert.ok(Math.abs(received[3].intensity - (received[2].intensity - .05)) < 1e-8);
+  stage.clientWidth = 320; stage.clientHeight = 500;
+  app.window.fire('resize');
+  app.tick(460);
+  assert.deepEqual(received.at(-1).crop, model.padSphereCrop(320 / 500));
+  app.window.fire('pagehide');
+  assert.equal(stage.requestPadColorFrame, undefined);
+  assert.equal(app.frames.size, 0);
+});
 
 function assertReticleCentered(app) {
   const stage = app.elements['pad-stage'];

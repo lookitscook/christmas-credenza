@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import { PAD_LANDMARKS, PAD_EMOTIONS, padEmotionKind, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, PAD_COLOR_GLSL, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance } from '../src/pad-model.js';
+import { PAD_LANDMARKS, PAD_EMOTIONS, padEmotionKind, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, PAD_COLOR_GLSL, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance, padSphereCrop } from '../src/pad-model.js';
 import { WARRINER_RATINGS, PAD_WARRINER_LANDMARKS } from '../src/pad-warriner.js';
 
 test('all 151 Table 4 mean triplets are present in original row order', () => {
@@ -276,5 +276,25 @@ test('camera framing keeps the complete ring and knob visible in portrait and la
       const point = new THREE.Vector3(Math.cos(angle) * 1.94, Math.sin(angle) * 1.94, .075).project(camera);
       assert.ok(Math.abs(point.x) < 1 && Math.abs(point.y) < 1 && Math.abs(point.z) < 1);
     }
+  }
+});
+
+test('the logo source crop includes the complete perspective circle at every selector aspect ratio', () => {
+  for (const aspect of [.35, .65, 1, 1.5, 3]) {
+    const camera = new THREE.PerspectiveCamera(34, aspect, .1, 100);
+    const distance = padCameraDistance(aspect);
+    camera.position.z = distance;
+    camera.updateMatrixWorld();
+    const [x, y, width, height] = padSphereCrop(aspect);
+    assert.ok(x >= 0 && y >= 0 && x + width <= 1 && y + height <= 1);
+    assert.ok(Math.abs(width * aspect - height) < 1e-12, 'the crop is circular in pixels');
+    const radius = 1.51, z = radius * radius / distance;
+    const transverse = Math.sqrt(radius * radius - z * z);
+    const right = new THREE.Vector3(transverse, 0, z).project(camera);
+    const top = new THREE.Vector3(0, transverse, z).project(camera);
+    assert.ok(Math.abs(x + width - (right.x + 1) / 2) < 1e-12);
+    assert.ok(Math.abs(y + height - (top.y + 1) / 2) < 1e-12);
+    assert.ok(Math.abs(x + width / 2 - .5) < 1e-12);
+    assert.ok(Math.abs(y + height / 2 - .5) < 1e-12);
   }
 });

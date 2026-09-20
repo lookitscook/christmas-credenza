@@ -47,7 +47,10 @@ The opening fades ink density in the shared cross-hatch shader before drawing
 strokes, so hatching runs naturally into the page background. Its position and
 radius follow the sphere's actual layout, including resizing and display scale.
 The Christmas presentation uses the captured scene defaults without modifying
-saved editor settings. The logo follows its saved local settings. Headings use
+saved editor settings. The logo's sphere follows the selector's current
+front-facing color gradient live, before sepia and without mesh lines, points,
+or labels. Its saved soft edge and cross-hatch settings then apply to that source;
+the logo retains its own sepia filter. Headings use
 locally bundled Literata; body copy and navigation use locally bundled Inter.
 
 Layout and placeholder copy: `home/index.html` and `src/home.css`. This route is

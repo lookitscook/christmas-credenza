@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
-import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance } from './pad-model.js';
+import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance, padSphereCrop } from './pad-model.js';
 
 const stage = document.getElementById('pad-stage');
 const emotionEl = document.getElementById('pad-emotion');
@@ -43,6 +43,7 @@ function createSelector() {
   let frame = null, disposed = false, snap = null;
   let activePointer = null, dragMode = null, lastX = 0, lastY = 0;
   let dragDistance = 0, lastDragMoved = false, previousDragMoved = false;
+  let colorCrop = [0, 0, 1, 1];
   function invalidate() {
     if (frame !== null || disposed) return;
     frame = requestAnimationFrame(now => {
@@ -59,6 +60,11 @@ function createSelector() {
       try {
         camera.layers.set(1);
         renderer.render(scene, camera);
+        // Consumers must upload the live canvas now, before the browser can
+        // discard its drawing buffer. This pass has color only, before CSS sepia.
+        stage.dispatchEvent(new CustomEvent('pad-color-frame', {
+          detail: { canvas: renderer.domElement, crop: colorCrop },
+        }));
         // Keep the sphere's depth in the overlay pass so rear mesh lines stay
         // hidden, but draw its color only on the filtered canvas below.
         camera.layers.set(0);
@@ -71,6 +77,9 @@ function createSelector() {
       if (snap) invalidate();
     });
   }
+  // A late subscriber can request a fresh frame instead of reading a cleared
+  // WebGL canvas. Module load order and returning from the page cache are safe.
+  stage.requestPadColorFrame = invalidate;
 
   const group = new THREE.Group();
   scene.add(group);
@@ -439,6 +448,7 @@ function createSelector() {
     }
     camera.aspect = width / height;
     camera.position.set(0, 0, padCameraDistance(camera.aspect, camera.fov));
+    colorCrop = padSphereCrop(camera.aspect, camera.fov);
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
     const ringEdge = new THREE.Vector3(ringRadius, 0, 0).project(camera);
@@ -456,6 +466,7 @@ function createSelector() {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    delete stage.requestPadColorFrame;
     snap = null;
     listeners.abort(); resizeObserver.disconnect();
     if (frame !== null) cancelAnimationFrame(frame);

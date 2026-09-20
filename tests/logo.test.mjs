@@ -9,6 +9,39 @@ import { WORDMARK } from '../src/logo-wordmark.js';
 
 const pixel = 'data:image/png;base64,iVBORw0KGgo=';
 
+test('a live color source retains raw display RGB and crop, reuses its texture, and reallocates after resize', () => {
+  const sphere = Object.create(LogoSphere.prototype);
+  sphere.uniforms = { useColorSource: { value: false }, colorSource: { value: null },
+    sourceCrop: { value: new THREE.Vector4() } };
+  const canvas = { width: 552, height: 552 };
+  const crop = [.12, .12, .76, .76];
+  sphere.setColorSource(canvas, crop);
+  const texture = sphere.sourceTexture;
+  assert.equal(texture.image, canvas);
+  assert.equal(texture.colorSpace, THREE.NoColorSpace);
+  assert.equal(texture.flipY, true);
+  assert.equal(texture.generateMipmaps, false);
+  assert.equal(texture.minFilter, THREE.LinearFilter);
+  assert.equal(sphere.uniforms.useColorSource.value, true);
+  assert.deepEqual(sphere.uniforms.sourceCrop.value.toArray(), crop);
+  const version = texture.version;
+  sphere.setColorSource(canvas, crop);
+  assert.equal(sphere.sourceTexture, texture);
+  assert.ok(texture.version > version);
+  let disposed = false;
+  texture.addEventListener('dispose', () => { disposed = true; });
+  canvas.width = 716;
+  sphere.setColorSource(canvas, [.1, .2, .8, .6]);
+  assert.ok(disposed);
+  assert.notEqual(sphere.sourceTexture, texture);
+  let replacementDisposed = false;
+  sphere.sourceTexture.addEventListener('dispose', () => { replacementDisposed = true; });
+  sphere.setColorSource(null);
+  assert.ok(replacementDisposed);
+  assert.equal(sphere.uniforms.useColorSource.value, false);
+  assert.equal(sphere.uniforms.colorSource.value, null);
+});
+
 test('logo uses its captured hatch defaults and safely restores partial settings', () => {
   const settings = readLogoSettings({ color1: '#ABCDEF', thickness: 999, scale: -1, injected: '<script>' });
   for (const [key, value] of Object.entries(LOGO_HATCH_DEFAULTS)) assert.equal(LOGO_DEFAULTS[key], value);

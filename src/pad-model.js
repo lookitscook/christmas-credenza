@@ -152,3 +152,15 @@ export function padCameraDistance(aspect, fov = 34) {
   // Fit the complete ring and knob on the shorter viewport dimension.
   return 2.08 / (Math.tan(fov * Math.PI / 360) * Math.min(1, Math.max(.01, aspect)));
 }
+
+// UV crop of the front-facing sphere, excluding the surrounding controls.
+// Use the perspective silhouette (the tangent from the camera), rather than
+// projecting the equator, which would trim the edge of the visible circle.
+export function padSphereCrop(aspect, fov = 34) {
+  aspect = Math.max(.01, aspect);
+  const radius = 1.51;
+  const distance = padCameraDistance(aspect, fov);
+  const height = radius / (Math.sqrt(distance * distance - radius * radius) * Math.tan(fov * Math.PI / 360));
+  const width = height / aspect;
+  return [(1 - width) / 2, (1 - height) / 2, width, height];
+}
