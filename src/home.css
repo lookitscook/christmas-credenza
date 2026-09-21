@@ -30,7 +30,7 @@ button, select { font: inherit; }
 .home-nav a { text-decoration: none; }
 .home-nav a:hover, .home-nav a[aria-current] { text-decoration: underline; }
 .home-main { margin-left: 196px; padding: 48px clamp(28px, 4.4vw, 80px) 80px; }
-.home-article { max-width: 1200px; margin: auto; --home-sphere-size: clamp(230px, 20.7vw, 276px); --home-sphere-inset: 8.5%; --home-sphere-drop: calc(var(--home-sphere-size) / 10); }
+.home-article { max-width: 70ch; margin: auto; font-size: 17px; --home-sphere-size: clamp(230px, 20.7vw, 276px); --home-sphere-inset: 8.5%; --home-sphere-drop: calc(var(--home-sphere-size) / 10); }
 .home-feature { position: relative; }
 .home-feature .scene-stage { position: relative; width: 100%; height: clamp(380px, 40vw, 580px); }
 .home-feature .scene-stage canvas { display: block; width: 100%; height: 100%; }
@@ -66,7 +66,7 @@ button, select { font: inherit; }
   .home-nav { flex-direction: row; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 12px 20px; margin: 0; font-size: 12px; }
   .home-nav .home-nav-current { display: none; }
   .home-main { margin: 0; padding: 32px 24px 48px; }
-  .home-article { --home-sphere-size: min(360px, calc(100vw - 32px)); --home-sphere-drop: 72px; }
+  .home-article { font-size: 16px; --home-sphere-size: min(360px, calc(100vw - 32px)); --home-sphere-drop: 72px; }
   .home-feature .scene-stage { height: clamp(300px, 78vw, 480px); }
   .home-feature .pad-stage { right: auto; left: 50%; transform: translate(-50%, -50%); }
   .home-heading { min-height: 0; padding: calc(var(--home-sphere-size) / 2 + var(--home-sphere-drop) + 44px) 0 32px; text-align: center; }
