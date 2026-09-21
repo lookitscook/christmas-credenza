@@ -53,6 +53,12 @@ or labels. Its saved soft edge and cross-hatch settings then apply to that sourc
 the logo retains its own sepia filter. Headings use
 locally bundled Literata; body copy and navigation use locally bundled Inter.
 
+For live appearance controls, open **http://127.0.0.1:4178/home/?debug=true**
+with `npm start`, or open `/home/?debug=true` on the `npm run dev` server. Logo crosshatch and edge softness use the logo
+editor’s saved settings. Christmas crosshatch settings save separately for the
+homepage. Changes update immediately and survive reloads, including visits without
+the debug parameter. Controls are unavailable in production builds.
+
 Layout and placeholder copy: `home/index.html` and `src/home.css`. This route is
 included in the normal Vite build; it does not generate standalone HTML editions.
 
@@ -142,8 +148,8 @@ hex inputs, and every slider has a numeric input for exact values. **Reset spher
 restores the sphere and hatch defaults while preserving background and export
 preferences. Hatch controls appear when **Apply to sphere** is enabled.
 The default palette is `#00e1ff`, `#5ab054`, and `#ff00dd`, with direction 0°,
-balance 50%, highlight 40%, and edge softness 22%. Cross-hatch starts enabled
-with scale 0.25, thickness 1.5, and contour 1.5. Export defaults remain opaque at 2×.
+balance 50%, highlight 40%, and edge softness 25%. Cross-hatch starts enabled
+with scale 0.12, thickness 1.4, and contour 3.96. Export defaults remain opaque at 2×.
 Saturation is fixed at 100%. Grain is always 0 with cross-hatch enabled and 8%
 for the smooth sphere, including when restoring older settings and rendering
 SVG or PNG exports.
@@ -345,8 +351,8 @@ Cyan, Magenta, and Yellow weights are fixed at 1, Black at 0, and ink color at
 its black default in both editors, including when restoring older saved settings.
 Black and ink color have no editable controls.
 
-The table lists the credenza defaults; the logo uses scale 0.25, thickness 1.5,
-and contour 1.5. **Reset effect** restores each editor's captured defaults.
+The table lists the credenza defaults; the logo uses scale 0.12, thickness 1.4,
+and contour 3.96. **Reset effect** restores each editor's captured defaults.
 The effect uses the existing scene's
 colors and lighting with CMYK lines and normal-based contours. The demo's separate
 sample-object, material, and environment controls do not apply to this scene.

@@ -1,3 +1,4 @@
+import { HOME_DEBUG_ENABLED, HOME_SCENE_STORAGE_KEY, readHomeSceneSettings } from './home-debug-state.js';
 // Change this path to choose the video shown on the television.
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
 import { sceneCircleCutout } from './scene-cutout.js';
@@ -345,7 +346,27 @@ try {
     tvVideo.setState(state);postProcessing.setState(state);panels.setState(state.panels);invalidate();
   }
   // The homepage shares the scene defaults without saving over the editor.
-  if(presentation)applyState(SCENE_DEFAULTS);
+  if(presentation){
+    applyState({ ...SCENE_DEFAULTS, ...readHomeSceneSettings() });
+    if(HOME_DEBUG_ENABLED){
+      const { createHomeDebugControls } = await import('./home-debug-controls.js');
+      const { SCENE_HATCH_SLIDERS } = await import('./cross-hatch.js');
+      const state=postProcessing.getState();
+      createHomeDebugControls({
+        name:'christmas', title:'Christmas crosshatch', signal:backgroundListeners.signal,
+        values:{...state.hatch,enabled:state.effect==='cross-hatch'},
+        controls:[{key:'enabled',label:'Crosshatch enabled',type:'checkbox'},...SCENE_HATCH_SLIDERS],
+        onChange(key,value){
+          const next=postProcessing.getState();
+          if(key==='enabled')next.effect=value?'cross-hatch':'none';
+          else next.hatch[key]=value;
+          postProcessing.setState(next);
+          try{localStorage.setItem(HOME_SCENE_STORAGE_KEY,JSON.stringify(next));return true;}
+          catch{return false;}
+        },
+      });
+    }
+  }
   else persistence=createScenePersistence(root,getState,applyState);
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';

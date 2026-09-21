@@ -7,7 +7,7 @@ export const SPHERE = Object.freeze({ x: 831, y: 337, radius: 268 });
 const FIXED_SPHERE_SETTINGS = Object.freeze({ saturation: 100, grain: 8 });
 export const LOGO_DEFAULTS = Object.freeze({
   color1: '#00e1ff', color2: '#5ab054', color3: '#ff00dd',
-  angle: 0, midpoint: 50, highlight: 40, softness: 22, ...FIXED_SPHERE_SETTINGS,
+  angle: 0, midpoint: 50, highlight: 40, softness: 25, ...FIXED_SPHERE_SETTINGS,
   hatchEnabled: true, grain: 0, ...LOGO_HATCH_DEFAULTS,
   background: DEFAULT_PAGE_BACKGROUND, transparent: false, exportScale: 2,
 });
