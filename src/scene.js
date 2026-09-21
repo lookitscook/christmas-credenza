@@ -331,7 +331,7 @@ try {
     camera.updateProjectionMatrix();cameraRig.resize();invalidate();persistence?.scheduleSave();
   }
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);if(cutout)resizeObserver.observe(cutout);if(cutoutControl)resizeObserver.observe(cutoutControl);resize();
-  const cameraControls=presentation?null:attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
+  const cameraControls=attachCameraControls(renderer.domElement,cameraRig,()=>{invalidate();persistence?.scheduleSave();});
   root.querySelector('[data-action="reset-view"]')?.addEventListener('click',()=>{cameraRig.setState(CAMERA_DEFAULTS);invalidate();});
   let prevTime=0,trainFrame=null;
   function placeWheels(){for(const w of wheels)w.hub.rotation.z=(wheelTravel/w.r)%(2*Math.PI);}

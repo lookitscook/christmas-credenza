@@ -37,10 +37,15 @@ restore the corresponding captured defaults.
 Open **http://127.0.0.1:4178/home/** for the combined homepage. It uses the small
 Big Feeling logo, the live Christmas scene, and the same interactive PAD sphere
 as the editors. Navigation sits on the left on desktop and across the top on
-mobile. The sphere is centered at the bottom of the desktop navigation, with
-its emotion dropdown and intensity-ring gap below it. On mobile, the selector
+mobile. The sphere sits at the bottom of the desktop navigation, keeping a
+small margin from the window’s left edge and overlapping the sidebar’s right
+edge. The dropdown stays centered below the sphere. The sidebar divider runs from the image’s top to above the
+intensity ring, stopping short of the ring at the sidebar’s right edge. The dropdown
+and intensity-ring gap sit below the sphere. On mobile, the selector
 sits in a centered row beneath the navigation links. The Christmas image has
-no selector cutout and shares the body text column’s maximum width.
+no selector cutout and shares the body text column’s maximum width. Drag the
+Christmas image to orbit, Shift-drag to pan, and scroll or pinch to zoom, just
+as in the scene editor.
 
 The Christmas presentation uses the captured scene defaults without modifying
 saved editor settings. The logo's sphere follows the selector's current

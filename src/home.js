@@ -1,3 +1,4 @@
+import './home-layout.js';
 import { HOME_DEBUG_ENABLED } from './home-debug-state.js';
 import { HATCH_SLIDERS } from './cross-hatch.js';
 import { LogoSphere } from './logo-sphere.js';
