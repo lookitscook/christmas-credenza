@@ -8,9 +8,21 @@ import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './pag
 
 document.getElementById('home-wordmark').innerHTML = WORDMARK;
 applyPageBackground(readPageBackground());
+const scene = document.getElementById('christmas-credenza-tight-3d');
+const selector = document.getElementById('pad-stage');
+const lampListeners = new AbortController();
+let lampBrightness = .5;
+function syncLamp() { scene.setLampLighting?.(lampBrightness); }
+selector.addEventListener('pad-selection-change', event => {
+  lampBrightness = event.detail.brightness;
+  syncLamp();
+}, { signal: lampListeners.signal });
+scene.addEventListener('scene-ready', syncLamp, { signal: lampListeners.signal });
+window.addEventListener('pagehide', event => {
+  if (!event.persisted) lampListeners.abort();
+}, { signal: lampListeners.signal });
 try {
   const sphere = new LogoSphere(document.getElementById('home-logo-sphere'));
-  const selector = document.getElementById('pad-stage');
   const listeners = new AbortController();
   let settings, debugControls;
   function loadSettings() {

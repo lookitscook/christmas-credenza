@@ -97,6 +97,12 @@ export function padColor(p, a, d) {
   return YUV_MATRIX.map(row => Math.max(0, Math.min(255, row.reduce((sum, coefficient, i) => sum + coefficient * yuv[i], 0))) / 255);
 }
 
+// Dominance supplies Y in the sphere's YUV mapping. Normalize its surface
+// coordinate to the public 0–1 brightness range without applying intensity.
+export function padDominanceBrightness(d) {
+  return Math.max(0, Math.min(1, (d + 1) / 2));
+}
+
 export function padColorHex(p, a, d) {
   return `#${padColor(p, a, d).map(channel => Math.round(channel * 255).toString(16).padStart(2, '0')).join('')}`;
 }

@@ -136,7 +136,8 @@ try {
   const shade=cylinder(.145,.205,.30,0,.485,0,shadeMat,lamp,64);shade.geometry.dispose();shade.geometry=new THREE.CylinderGeometry(.145,.205,.30,64,1,true);shade.castShadow=false;
   for(const [y,r] of [[.335,.205],[.635,.145]]){const tor=mesh(new THREE.TorusGeometry(r,.003,6,64),brass,lamp);tor.rotation.x=Math.PI/2;tor.position.y=y;tor.castShadow=false;}
   sphere(.012,0,.662,0,brass,lamp);
-  const bulb=sphere(.025,0,.455,0,new THREE.MeshBasicMaterial({color:'#fff0c7'}),lamp);bulb.scale.y=1.3;
+  const bulbMaterial=new THREE.MeshBasicMaterial({color:'#fff0c7'});
+  const bulb=sphere(.025,0,.455,0,bulbMaterial,lamp);bulb.scale.y=1.3;
   const lamplight=new THREE.PointLight('#ffb750',3.5,4,2);lamplight.position.set(-.755,topY+.44,-.015);scene.add(lamplight);
   lamplight.castShadow=true;lamplight.shadow.mapSize.set(1024,1024);lamplight.shadow.bias=-.0007;lamplight.shadow.normalBias=.01;lamplight.shadow.radius=3;
   const wash=new THREE.PointLight('#ffc370',1.1,3,2);wash.position.set(-.68,1.63,-.32);scene.add(wash);
@@ -282,7 +283,7 @@ try {
   cylinder(.010,.014,.15,0,2.29,0,starGold,tree,12);
 
   // Warm soft light and restrained room fill retain the nighttime palette.
-  scene.add(new THREE.HemisphereLight('#d9c5a8','#6b3920',.65));
+  const hemisphere=new THREE.HemisphereLight('#d9c5a8','#6b3920',.65);scene.add(hemisphere);
   const key=new THREE.DirectionalLight('#ffe1ae',1.15);key.position.set(-1.5,3.4,3.3);scene.add(key);key.castShadow=true;
   key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-2.5;key.shadow.camera.right=2.5;key.shadow.camera.top=3;key.shadow.camera.bottom=-1;key.shadow.camera.near=.1;key.shadow.camera.far=9;key.shadow.bias=-.0006;key.shadow.normalBias=.008;key.shadow.radius=4;
   const fill=new THREE.DirectionalLight('#bac6da',.3);fill.position.set(1,2,4);scene.add(fill);
@@ -304,6 +305,15 @@ try {
   const drawingSize=new THREE.Vector2();
   function render(){requested=false;postProcessing.render(scene,camera);}
   function invalidate(){if(!requested){requested=true;requestAnimationFrame(render);}}
+  const {createAmbientLighting}=await import('./ambient-lighting.js');
+  const ambientLighting=createAmbientLighting({hemisphere,key,fill,invalidate});
+  const {createLampLighting}=await import('./lamp-lighting.js');
+  const lampLighting=createLampLighting({point:lamplight,wash,coverMaterial:shadeMat,bulbMaterial,invalidate});
+  root.setAmbientLighting=configuration=>ambientLighting.set(configuration);
+  root.setAmbientLightingMix=value=>ambientLighting.setMix(value);
+  root.getAmbientLighting=()=>ambientLighting.getState();
+  root.setLampLighting=value=>lampLighting.set(value);
+  root.getLampLighting=()=>lampLighting.get();
   const tvVideo=createTVVideo({src:TV_VIDEO_URL,screen:glass,root,invalidate});
   let persistence;
   function resize(){
@@ -368,8 +378,8 @@ try {
     }
   }
   else persistence=createScenePersistence(root,getState,applyState);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
-  message.hidden=true;root.dataset.ready='true';
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();delete root.setAmbientLighting;delete root.setAmbientLightingMix;delete root.getAmbientLighting;delete root.setLampLighting;delete root.getLampLighting;message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  message.hidden=true;root.dataset.ready='true';root.dispatchEvent(new CustomEvent('scene-ready'));
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';
   console.error(error);

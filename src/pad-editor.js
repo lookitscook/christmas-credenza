@@ -1,6 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
-import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance, padSphereCrop } from './pad-model.js';
+import { PAD_EMOTIONS, PAD_COLOR_GLSL, padEmotionSource, visiblePadEmotions, nearestPadLabels, dirToPad, padColor, padColorHex, padDominanceBrightness, padEmotion, nearestPadEmotion, ringAngle, ringIntensity, padCameraDistance, padSphereCrop } from './pad-model.js';
 
 const stage = document.getElementById('pad-stage');
 const emotionEl = document.getElementById('pad-emotion');
@@ -292,6 +292,7 @@ function createSelector() {
     knobElement.style.top = `${(1 - knobCenter.y) * stage.clientHeight / 2}px`;
     knobElement.style.width = knobElement.style.height = `${knobSize}px`;
     const values = dirToPad(selectedDirection, intensity);
+    const surface = dirToPad(selectedDirection, 1);
     const label = padEmotion(values);
     sphere.material.uniforms.intensity.value = intensity;
     marker.material.color.setRGB(...padColor(values.p, values.a, values.d), THREE.SRGBColorSpace);
@@ -304,6 +305,9 @@ function createSelector() {
     landmarkPicker.value = selectedIndex < 0 ? '' : String(selectedIndex);
     const format = value => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`;
     padEl.textContent = `P ${format(values.p)} · A ${format(values.a)} · D ${format(values.d)} · ${Math.round(intensity * 100)}%`;
+    stage.dispatchEvent(new CustomEvent('pad-selection-change', {
+      detail: { label, values, surface, brightness: padDominanceBrightness(surface.d) },
+    }));
     marker.position.copy(selectedDirection).multiplyScalar(sphereRadius + .015);
     halo.position.copy(marker.position);
     group.updateMatrixWorld(true);

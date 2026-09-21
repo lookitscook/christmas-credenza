@@ -58,6 +58,39 @@ or labels. Its saved soft edge and cross-hatch settings then apply to that sourc
 the logo retains its own sepia filter. Headings use
 locally bundled Literata; body copy and navigation use locally bundled Inter.
 
+The Christmas scene element exposes ambient-lighting methods after its
+`data-ready` attribute becomes `true`. Supply separate `current` and `target`
+states and animate `mix` from 0 to 1 to crossfade the hemisphere, key, and fill
+lights together:
+
+```js
+const scene = document.getElementById('christmas-credenza-tight-3d');
+scene.setAmbientLighting({
+  current: scene.getAmbientLighting().current,
+  target: {
+    brightness: 1.25, temperature: 5200, ambientLevel: .8,
+    shadowContrast: 1.3, shadowSoftness: 6,
+    keyDirection: -10, keyElevation: 55, fillBalance: .7,
+  },
+  mix: 0,
+});
+scene.setAmbientLightingMix(.5);
+```
+
+`brightness` ranges from 0–4, `temperature` from 1000–12000 K,
+`ambientLevel` and `fillBalance` from 0–3, `shadowContrast` from 0–2,
+`shadowSoftness` from 0–12, `keyDirection` from −180–180°, and
+`keyElevation` from 5–85°. Values are clamped to these ranges. Partial current
+or target updates preserve their other values.
+
+The scene also exposes `setLampLighting(brightness)` and `getLampLighting()`.
+Brightness is clamped to 0–1 and linearly controls the lamp's point light,
+secondary wash, shade emission, and visible bulb. On the homepage this is fed
+directly from the selector's surface dominance: `D = −1` becomes 0, `D = 0`
+becomes 0.5, and `D = 1` becomes 1. The intensity ring does not alter this
+surface-derived value. The selector publishes the same value as
+`pad-selection-change.detail.brightness`.
+
 For live appearance controls, open **http://127.0.0.1:4178/home/?debug=true**
 with `npm start`, or open `/home/?debug=true` on the `npm run dev` server. Logo crosshatch and edge softness use the logo
 editor’s saved settings. Christmas crosshatch settings save separately for the
