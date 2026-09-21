@@ -44,7 +44,10 @@ intensity ring, stopping short of the ring at the sidebar’s right edge. The dr
 and intensity-ring gap sit below the sphere. On mobile, the smaller selector sits near the top of the screen, centered
 over the navigation. A hamburger button opens the links, and two inset border
 segments leave clearance around the intensity ring. The Christmas image has
-no selector cutout and shares the body text column’s maximum width. Drag the
+no selector cutout, always uses a 16:9 aspect ratio, and shares the body text
+column’s 57ch maximum width.
+Desktop content keeps at least 24px of clearance from the intensity ring;
+mobile text scales modestly to retain the shorter book-like line length. Drag the
 Christmas image to orbit, Shift-drag to pan, and scroll or pinch to zoom, just
 as in the scene editor.
 

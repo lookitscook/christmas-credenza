@@ -37,6 +37,9 @@ function updateDivider() {
   const menuRect = menu.getBoundingClientRect();
   const selectorRect = selector.getBoundingClientRect();
   const ringRect = ring.getBoundingClientRect();
+  if (!mobile.matches) {
+    document.documentElement.style.setProperty('--home-ring-right', `${ringRect.right}px`);
+  }
   const radius = ringRect.width / 2;
   const gap = Math.max(0, radius - selectorRect.width * cropWidth / 2);
   // Keep the fixed sidebar aligned with the image's initial document position.
