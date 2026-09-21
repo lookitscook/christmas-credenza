@@ -41,8 +41,9 @@ mobile. The sphere sits at the bottom of the desktop navigation, keeping a
 small margin from the window’s left edge and overlapping the sidebar’s right
 edge. The dropdown stays centered below the sphere. The sidebar divider runs from the image’s top to above the
 intensity ring, stopping short of the ring at the sidebar’s right edge. The dropdown
-and intensity-ring gap sit below the sphere. On mobile, the selector
-sits in a centered row beneath the navigation links. The Christmas image has
+and intensity-ring gap sit below the sphere. On mobile, the smaller selector sits near the top of the screen, centered
+over the navigation. A hamburger button opens the links, and two inset border
+segments leave clearance around the intensity ring. The Christmas image has
 no selector cutout and shares the body text column’s maximum width. Drag the
 Christmas image to orbit, Shift-drag to pan, and scroll or pinch to zoom, just
 as in the scene editor.

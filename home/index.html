@@ -18,7 +18,12 @@
       <canvas id="home-logo-sphere" aria-hidden="true"></canvas>
       <svg id="home-wordmark" viewBox="0 0 1169 1142" aria-hidden="true"></svg>
     </a>
-    <nav class="home-nav" aria-label="Main navigation">
+    <button class="home-menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="home-navigation">
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+    <span class="home-mobile-rule home-mobile-rule-left" aria-hidden="true"></span>
+    <span class="home-mobile-rule home-mobile-rule-right" aria-hidden="true"></span>
+    <nav id="home-navigation" class="home-nav" aria-label="Main navigation">
       <a class="home-nav-current" href="./" aria-current="page">Home</a>
       <a href="../">Christmas</a>
       <a href="../logo/">Logo</a>
