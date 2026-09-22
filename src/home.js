@@ -12,12 +12,18 @@ const scene = document.getElementById('christmas-credenza-tight-3d');
 const selector = document.getElementById('pad-stage');
 const lampListeners = new AbortController();
 let lampBrightness = .5;
+let selectedEmotion = 'Inspired';
 function syncLamp() { scene.setLampLighting?.(lampBrightness); }
+function syncEmotionVideo() { scene.setEmotionVideo?.(selectedEmotion); }
 selector.addEventListener('pad-selection-change', event => {
   lampBrightness = event.detail.brightness;
   syncLamp();
 }, { signal: lampListeners.signal });
-scene.addEventListener('scene-ready', syncLamp, { signal: lampListeners.signal });
+selector.addEventListener('pad-emotion-selected', event => {
+  selectedEmotion = event.detail.name;
+  syncEmotionVideo();
+}, { signal: lampListeners.signal });
+scene.addEventListener('scene-ready', () => { syncLamp(); syncEmotionVideo(); }, { signal: lampListeners.signal });
 window.addEventListener('pagehide', event => {
   if (!event.persisted) lampListeners.abort();
 }, { signal: lampListeners.signal });

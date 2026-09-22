@@ -36,6 +36,15 @@ test('turning off TV restores original glass and disables the area light and blo
   crt.setEnabled(true);
   assert.ok(light.intensity > 0);
   assert.equal(glow.visible, true);
+  // Repeated source switches must restore both outputs, even for a dark clip.
+  crt.setEnabled(false);
+  crt.updateColor(new THREE.Color('black'));
+  crt.setEnabled(true);
+  assert.ok(light.intensity > 0);
+  assert.equal(glow.visible, true);
+  const emitted = light.color.r * .299 + light.color.g * .587 + light.color.b * .114;
+  assert.ok(emitted > .1);
+  assert.equal(glow.material.uniforms.glowColor.value.equals(light.color), true);
   crt.dispose();
 });
 

@@ -56,7 +56,15 @@ export function createTVVideo({ src, screen, root, invalidate }) {
   let animationFrame = null;
   let lastTime = -1;
   let pendingTime = null;
+  let currentSource = src;
   const hasVideoFrames = typeof video.requestVideoFrameCallback === 'function';
+
+  function syncVideoOutput() {
+    const active = enabled && hasFrame && !video.error;
+    crt.setEnabled(active);
+    controls.setAvailable(active);
+    invalidate();
+  }
 
   function updateLight() {
     const now = performance.now();
@@ -93,12 +101,10 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     if (toggle) toggle.textContent = enabled ? 'TV video: On' : 'TV video: Off';
     stage.setAttribute('aria-label', enabled ? videoDescription
       : videoDescription.replace('playing a silent looping video', 'displaying its original reflective screen texture'));
-    crt.setEnabled(enabled && hasFrame && !video.error);
-    controls.setAvailable(enabled && hasFrame && !video.error);
+    syncVideoOutput();
     showStatus('');
     if (enabled) play();
     else { video.pause(); stopFrameUpdates(); }
-    invalidate();
   }
 
   function fitVideo() {
@@ -165,6 +171,24 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     pendingTime = null;
     lastTime = -1;
   }
+
+  function setSource(nextSource) {
+    if (disposed || !nextSource || nextSource === currentSource) return false;
+    currentSource = nextSource;
+    pendingTime = null;
+    hasFrame = false;
+    lastTime = -1;
+    stopFrameUpdates();
+    video.pause();
+    crt.setEnabled(false);
+    controls.setAvailable(false);
+    showStatus('');
+    video.src = currentSource;
+    video.load();
+    if (enabled) play();
+    invalidate();
+    return true;
+  }
   video.addEventListener('loadedmetadata', () => { fitVideo(); restoreTime(); }, options);
   video.addEventListener('seeked', () => {
     if (video.readyState < video.HAVE_CURRENT_DATA) return;
@@ -178,13 +202,12 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     copyFrame();
     hasFrame = true;
     if (enabled) updateLight();
-    crt.setEnabled(enabled);
-    controls.setAvailable(enabled);
-    invalidate();
+    syncVideoOutput();
   }, options);
   video.addEventListener('playing', () => {
     if (!enabled) { video.pause(); return; }
     showStatus('');
+    syncVideoOutput();
     if (frameCallback === null && animationFrame === null) updateFrame();
   }, options);
   video.addEventListener('error', () => {
@@ -224,10 +247,13 @@ export function createTVVideo({ src, screen, root, invalidate }) {
     controls.dispose();
   }
 
-  video.src = src;
+  video.src = currentSource;
   play();
   return {
-    dispose, setEnabled,
+    dispose, setEnabled, setSource,
+    getSource() { return currentSource; },
+    getCRTState() { return controls.getState(); },
+    setCRTState(state) { controls.setState(state); },
     getState() {
       return { tv: { enabled, currentTime: pendingTime ?? video.currentTime }, crt: controls.getState() };
     },

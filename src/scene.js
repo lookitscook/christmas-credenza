@@ -1,13 +1,14 @@
-import { HOME_DEBUG_ENABLED, HOME_SCENE_STORAGE_KEY, readHomeSceneSettings } from './home-debug-state.js';
-// Change this path to choose the video shown on the television.
+import { HOME_DEBUG_ENABLED, HOME_SCENE_STORAGE_KEY, HOME_SCENE_SETTINGS_VERSION, readHomeSceneSettings } from './home-debug-state.js';
 import { LOGO_STORAGE_KEY, readPageBackground, applyPageBackground } from './page-background.js';
 import { sceneCircleCutout } from './scene-cutout.js';
+import { emotionVideoUrl, randomEmotionVideo } from './emotion-videos.js';
 const pageBackground = applyPageBackground(readPageBackground());
-const TV_VIDEO_URL = new URL('../content/11543712-256px.mp4', import.meta.url).href;
 const root = document.getElementById('christmas-credenza-tight-3d');
 const stage = root.querySelector('.scene-stage');
 const message = root.querySelector('.scene-message');
 const presentation = root.hasAttribute('data-presentation');
+let tvEmotion = presentation ? 'Inspired' : randomEmotionVideo().name;
+const TV_VIDEO_URL = emotionVideoUrl(tvEmotion);
 const cutout = root.querySelector('[data-scene-cutout]');
 const cutoutControl = root.querySelector('[data-scene-cutout-control]');
 try {
@@ -315,6 +316,13 @@ try {
   root.setLampLighting=value=>lampLighting.set(value);
   root.getLampLighting=()=>lampLighting.get();
   const tvVideo=createTVVideo({src:TV_VIDEO_URL,screen:glass,root,invalidate});
+  root.setEmotionVideo=name=>{
+    const source=emotionVideoUrl(name);
+    if(!source)return false;
+    tvEmotion=name;
+    return tvVideo.setSource(source);
+  };
+  root.getEmotionVideo=()=>tvEmotion;
   let persistence;
   function resize(){
     const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
@@ -357,10 +365,22 @@ try {
   }
   // The homepage shares the scene defaults without saving over the editor.
   if(presentation){
-    applyState({ ...SCENE_DEFAULTS, ...readHomeSceneSettings() });
+    const homeSettings=readHomeSceneSettings();
+    applyState({ ...SCENE_DEFAULTS, ...homeSettings });
     if(HOME_DEBUG_ENABLED){
       const { createHomeDebugControls } = await import('./home-debug-controls.js');
       const { SCENE_HATCH_SLIDERS } = await import('./cross-hatch.js');
+      const { CRT_CONTROLS } = await import('./crt-shader.js');
+      function saveHomeSettings(){
+        const effect=postProcessing.getState();
+        try{
+          localStorage.setItem(HOME_SCENE_STORAGE_KEY,JSON.stringify({
+            version:HOME_SCENE_SETTINGS_VERSION,effect:effect.effect,hatch:effect.hatch,crt:tvVideo.getCRTState(),
+          }));
+          return true;
+        }
+        catch{return false;}
+      }
       const state=postProcessing.getState();
       createHomeDebugControls({
         name:'christmas', title:'Christmas crosshatch', signal:backgroundListeners.signal,
@@ -371,14 +391,29 @@ try {
           if(key==='enabled')next.effect=value?'cross-hatch':'none';
           else next.hatch[key]=value;
           postProcessing.setState(next);
-          try{localStorage.setItem(HOME_SCENE_STORAGE_KEY,JSON.stringify(next));return true;}
-          catch{return false;}
+          return saveHomeSettings();
+        },
+      });
+      const crt=tvVideo.getCRTState();
+      createHomeDebugControls({
+        name:'crt',title:'CRT video',signal:backgroundListeners.signal,
+        values:{enabled:crt.enabled,...crt.parameters},
+        controls:[
+          {key:'enabled',label:'CRT effect enabled',type:'checkbox'},
+          ...CRT_CONTROLS.map(({key,label,min,max,step})=>({key,label,min,max,step})),
+        ],
+        onChange(key,value){
+          const next=tvVideo.getCRTState();
+          if(key==='enabled')next.enabled=value;
+          else next.parameters[key]=value;
+          tvVideo.setCRTState(next);
+          return saveHomeSettings();
         },
       });
     }
   }
   else persistence=createScenePersistence(root,getState,applyState);
-  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();delete root.setAmbientLighting;delete root.setAmbientLightingMix;delete root.getAmbientLighting;delete root.setLampLighting;delete root.getLampLighting;message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
+  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();backgroundListeners.abort();persistence?.dispose();setTrainRunning(false);cameraControls?.dispose();resizeObserver.disconnect();tvVideo.dispose();panels.dispose();postProcessing.dispose();delete root.setAmbientLighting;delete root.setAmbientLightingMix;delete root.getAmbientLighting;delete root.setLampLighting;delete root.getLampLighting;delete root.setEmotionVideo;delete root.getEmotionVideo;message.hidden=false;message.textContent='The 3D view lost its graphics connection. Reload to restore the scene.';});
   message.hidden=true;root.dataset.ready='true';root.dispatchEvent(new CustomEvent('scene-ready'));
 } catch(error) {
   message.hidden=false;message.textContent='The 3D scene could not start. It needs WebGL and the bundled app files.';

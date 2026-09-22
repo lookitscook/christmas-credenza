@@ -93,9 +93,10 @@ surface-derived value. The selector publishes the same value as
 
 For live appearance controls, open **http://127.0.0.1:4178/home/?debug=true**
 with `npm start`, or open `/home/?debug=true` on the `npm run dev` server. Logo crosshatch and edge softness use the logo
-editor’s saved settings. Christmas crosshatch settings save separately for the
-homepage. Changes update immediately and survive reloads, including visits without
-the debug parameter. Controls are unavailable in production builds.
+editor’s saved settings. Christmas crosshatch and CRT video settings save
+separately for the homepage. Changes update immediately and survive reloads,
+including visits without the debug parameter. Controls are unavailable in
+production builds.
 
 Layout and placeholder copy: `home/index.html` and `src/home.css`. This route is
 included in the normal Vite build; it does not generate standalone HTML editions.
@@ -127,12 +128,13 @@ not the bundled video or textures.
 
 ## Television video
 
-The television automatically plays `content/11543712-256px.mp4` on
-repeat, with audio muted and volume set to zero. Playback continues independently
-of the train and works with Cross-hatch II enabled. Footage scales to fill the
-curved CRT glass, preserving its proportions and cropping the edges as needed.
-The bundled file is compressed to **256 × 144 pixels**, with its unused audio
-removed. Each video frame is limited to **256 pixels on its longest
+The homepage television plays the video in `content/emotions/` that matches the
+emotion selected by the PAD dropdown. It changes after the sphere finishes
+snapping to the new emotion. The scene editor chooses a random emotion video on
+each page load. All videos repeat with audio muted and volume set to zero.
+Playback continues independently of the train and works with Cross-hatch II
+enabled. Footage scales to fill the curved CRT glass, preserving its proportions
+and cropping the edges as needed. Each video frame is limited to **256 pixels on its longest
 side** before being cropped to cover the screen. Smooth
 texture filtering gives the enlarged picture a softer CRT look. Smaller source
 videos keep their original resolution. Change `MAX_VIDEO_TEXTURE_SIZE` in
@@ -153,25 +155,22 @@ Click **TV video: On** in the toolbar to turn the content off: playback pauses,
 the glow and screen light switch off, and the original screen texture and UV mapping
 return. Click **TV video: Off** to resume silent playback from the paused position.
 
-To choose a different video, put an MP4, WebM, or OGV file in `content/` and update
-`TV_VIDEO_URL` at the top of `src/scene.js`. The file must use a codec supported by
-your browser. Reload the development page, or run `npm run build` for both packaged
-editions. Only the compressed MP4 is included in source control so GitHub Actions
-can build from a fresh checkout. The full-resolution original remains local and
-gitignored. Compress replacement clips to at most 256 pixels in either dimension,
-then update the exception in `.gitignore` and commit only the compressed file.
+The 64 filenames are the lowercase dropdown labels followed by `.mp4`. When the
+curated PAD set changes, add a matching browser-compatible MP4 to
+`content/emotions/`. The test suite checks that every dropdown value has a file.
+Reload the development page, or run `npm run build` for the packaged editions.
 
 To reproduce the bundled compression with FFmpeg:
 
 ```sh
-ffmpeg -i content/11543712-hd_1920_1080_30fps.mp4 \
+ffmpeg -i source.mp4 \
   -map 0:v:0 \
   -vf 'scale=256:256:force_original_aspect_ratio=decrease:force_divisible_by=2:flags=lanczos,setsar=1' \
   -c:v libx264 -preset slow -crf 28 -pix_fmt yuv420p \
-  -an -map_metadata -1 -movflags +faststart content/11543712-256px.mp4
+  -an -map_metadata -1 -movflags +faststart content/emotions/emotion.mp4
 ```
 
-The production build includes the selected video as a local asset.
+The production build includes all 64 emotion videos as local assets.
 If browser policy blocks muted autoplay, clicking the scene starts playback.
 If the video cannot load, the original screen remains visible with a status message.
 
@@ -472,7 +471,7 @@ before building. Pushes to `main` deploy automatically; **Build and deploy GitHu
 Pages** can also be run manually from the Actions tab.
 
 1. Commit and push the source changes, including `.github/workflows/pages.yml`,
-   `.nvmrc`, `package-lock.json`, and `content/11543712-256px.mp4`.
+   `.nvmrc`, `package-lock.json`, and `content/emotions/`.
 2. In the repository's **Settings → Pages → Build and deployment**, set **Source**
    to **GitHub Actions**.
 3. Push to `main`, or run the workflow manually.

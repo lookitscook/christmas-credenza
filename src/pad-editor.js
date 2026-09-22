@@ -44,6 +44,7 @@ function createSelector() {
   const listeners = new AbortController();
   const options = { signal: listeners.signal };
   let frame = null, disposed = false, snap = null;
+  let settledEmotion = null;
   let activePointer = null, dragMode = null, lastX = 0, lastY = 0;
   let dragDistance = 0, lastDragMoved = false, previousDragMoved = false;
   let colorCrop = [0, 0, 1, 1];
@@ -57,8 +58,9 @@ function createSelector() {
         group.quaternion.slerpQuaternions(snap.from, snap.to, eased);
         selectedDirection.copy(front).applyQuaternion(group.quaternion.clone().invert()).normalize();
         intensity = THREE.MathUtils.lerp(snap.intensityFrom, snap.intensityTo, eased);
-        if (progress === 1) snap = null;
-        update(false);
+        const settled = progress === 1;
+        if (settled) snap = null;
+        update(false, settled);
       }
       try {
         camera.layers.set(1);
@@ -281,7 +283,7 @@ function createSelector() {
   const front = new THREE.Vector3(0, 0, 1);
   const selectedDirection = new THREE.Vector3(initialEmotion.p, initialEmotion.a, initialEmotion.d).normalize();
   group.quaternion.setFromUnitVectors(selectedDirection, front);
-  function update(render = true) {
+  function update(render = true, settled = false) {
     const angle = intensityAngle(intensity);
     knobPosition.set(Math.cos(angle) * ringRadius, Math.sin(angle) * ringRadius, 0);
     camera.updateMatrixWorld();
@@ -308,6 +310,12 @@ function createSelector() {
     stage.dispatchEvent(new CustomEvent('pad-selection-change', {
       detail: { label, values, surface, brightness: padDominanceBrightness(surface.d) },
     }));
+    if (settled && selectedIndex >= 0 && settledEmotion !== label) {
+      settledEmotion = label;
+      stage.dispatchEvent(new CustomEvent('pad-emotion-selected', {
+        detail: { name: label, values, surface },
+      }));
+    }
     marker.position.copy(selectedDirection).multiplyScalar(sphereRadius + .015);
     halo.position.copy(marker.position);
     group.updateMatrixWorld(true);
@@ -328,7 +336,7 @@ function createSelector() {
       group.quaternion.copy(to);
       selectedDirection.copy(front).applyQuaternion(to.clone().invert()).normalize();
       intensity = intensityTo;
-      update();
+      update(true, true);
       return;
     }
     snap = { started: performance.now(), from: group.quaternion.clone(), to, intensityFrom: intensity, intensityTo };
@@ -461,7 +469,7 @@ function createSelector() {
     const ringEdge = new THREE.Vector3(ringRadius, 0, 0).project(camera);
     ringScreenRadius = ringEdge.x * width / 2;
     stage.style.setProperty('--pad-ring-size', `${ringScreenRadius * 2}px`);
-    update();
+    update(true, true);
   }
   const resizeObserver = new ResizeObserver(resize);
   resizeObserver.observe(stage);

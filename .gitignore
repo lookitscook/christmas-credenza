@@ -1,4 +1,6 @@
 node_modules/
 content/*
 !content/11543712-256px.mp4
+!content/emotions/
+!content/emotions/*.mp4
 dist/

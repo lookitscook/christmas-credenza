@@ -211,6 +211,19 @@ test('the selected landmark is centered under the reticle on the first frame and
   assertReticleCentered(app);
 });
 
+test('emotion selection events wait for the picker snap to settle', async () => {
+  const app = await selector();
+  const selected = [];
+  app.elements['pad-stage'].addEventListener('pad-emotion-selected', event => selected.push(event.detail.name));
+  const picker = app.elements['pad-landmark-picker'];
+  picker.value = String(model.PAD_EMOTIONS.findIndex(([name]) => name === 'Sad'));
+  picker.fire('change');
+  app.tick(210);
+  assert.deepEqual(selected, []);
+  app.tick(420);
+  assert.deepEqual(selected, ['Sad']);
+});
+
 test('globe colors render separately from overlays, retaining sphere depth and synchronized canvases', async () => {
   const app = await selector();
   const globe = app.renderers.find(renderer => renderer.domElement.className === 'pad-globe');

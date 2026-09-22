@@ -4,6 +4,7 @@ import { CRT_CONTROLS, createCRTUniforms, crtFragment, crtUniformName } from './
 
 const SCREEN_WIDTH = .567;
 const SCREEN_HEIGHT = .475;
+const MIN_EMISSION_LUMINANCE = .3;
 
 export function createCRTScreen(screen, videoTexture) {
   if (!THREE.UniformsLib.LTC_FLOAT_1) RectAreaLightUniformsLib.init();
@@ -99,6 +100,10 @@ export function createCRTScreen(screen, videoTexture) {
   glow.visible = false;
   glow.userData.excludeFromNormals = true;
   screen.add(glow);
+  const emissionColor = new THREE.Color();
+  const darkFallback = new THREE.Color('#ffd3a5');
+  const luminance = color => color.r * .299 + color.g * .587 + color.b * .114;
+  darkFallback.multiplyScalar(MIN_EMISSION_LUMINANCE / luminance(darkFallback));
 
   return {
     setParameter(key, value) {
@@ -116,7 +121,12 @@ export function createCRTScreen(screen, videoTexture) {
       glow.visible = enabled;
     },
     updateColor(color) {
-      light.color.lerp(color, .35);
+      emissionColor.copy(color);
+      const amount = luminance(emissionColor);
+      if (amount > 1e-6 && amount < MIN_EMISSION_LUMINANCE) {
+        emissionColor.multiplyScalar(MIN_EMISSION_LUMINANCE / amount);
+      } else if (amount <= 1e-6) emissionColor.copy(darkFallback);
+      light.color.lerp(emissionColor, .35);
       glowMaterial.uniforms.glowColor.value.copy(light.color);
     },
     dispose() {
