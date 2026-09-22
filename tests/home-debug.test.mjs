@@ -6,7 +6,7 @@ import { CRT_DEFAULTS } from '../src/crt-shader.js';
 
 const defaultHomeScene = () => ({
   effect: 'cross-hatch', hatch: { ...SCENE_HATCH_DEFAULTS, scale: 1.7 },
-  crt: { enabled: true, parameters: { ...CRT_DEFAULTS, brightness: 1 } },
+  crt: { enabled: true, parameters: { ...CRT_DEFAULTS, brightness: 1, bloomIntensity: .25 } },
 });
 
 test('homepage controls require development and the explicit debug=true parameter', () => {
@@ -25,7 +25,7 @@ test('homepage scene and CRT settings restore only supported values without chan
   const storage = { getItem(key) { assert.equal(key, HOME_SCENE_STORAGE_KEY); return JSON.stringify(saved); } };
   assert.deepEqual(readHomeSceneSettings(storage), {
     effect: 'none', hatch: { ...SCENE_HATCH_DEFAULTS, scale: .73, thickness: 3, contour: 0, edgeFade: .14 },
-    crt: { enabled: false, parameters: { ...CRT_DEFAULTS, brightness: 1.8, scanlineCount: 471, curvature: .12 } },
+    crt: { enabled: false, parameters: { ...CRT_DEFAULTS, brightness: 1.8, bloomIntensity: .25, scanlineCount: 471, curvature: .12 } },
   });
   for (const storage of [
     { getItem: () => '{broken' },
@@ -43,8 +43,21 @@ test('v1 homepage settings adopt the new hatch size and CRT brightness once', ()
   assert.equal(restored.hatch.scale, 1.7);
   assert.equal(restored.hatch.thickness, 2);
   assert.equal(restored.crt.parameters.brightness, 1);
+  assert.equal(restored.crt.parameters.bloomIntensity, .25);
   assert.equal(restored.crt.parameters.contrast, 1.2);
   assert.equal(restored.crt.enabled, false);
+});
+
+test('v2 homepage settings preserve prior edits while adopting the new bloom strength', () => {
+  const storage = { getItem: () => JSON.stringify({
+    version: 2,
+    hatch: { scale: .8 },
+    crt: { parameters: { brightness: 1.4, bloomIntensity: 1.2 } },
+  }) };
+  const restored = readHomeSceneSettings(storage);
+  assert.equal(restored.hatch.scale, .8);
+  assert.equal(restored.crt.parameters.brightness, 1.4);
+  assert.equal(restored.crt.parameters.bloomIntensity, .25);
 });
 
 test('the local source server supports debug without enabling production previews', () => {

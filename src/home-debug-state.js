@@ -2,7 +2,7 @@ import { SCENE_HATCH_DEFAULTS, SCENE_HATCH_SLIDERS } from './cross-hatch.js';
 import { CRT_CONTROLS, CRT_DEFAULTS } from './crt-shader.js';
 
 export const HOME_SCENE_STORAGE_KEY = 'christmas-credenza-home-hatch-v1';
-export const HOME_SCENE_SETTINGS_VERSION = 2;
+export const HOME_SCENE_SETTINGS_VERSION = 3;
 export function isHomeDebug(development, search) {
   return development === true && new URLSearchParams(search).get('debug') === 'true';
 }
@@ -24,7 +24,7 @@ export function readHomeSceneSettings(storage) {
   const state = {
     effect: 'cross-hatch',
     hatch: { ...SCENE_HATCH_DEFAULTS, scale: 1.7 },
-    crt: { enabled: true, parameters: { ...CRT_DEFAULTS, brightness: 1 } },
+    crt: { enabled: true, parameters: { ...CRT_DEFAULTS, brightness: 1, bloomIntensity: .25 } },
   };
   try {
     const saved = JSON.parse((storage ?? globalThis.localStorage).getItem(HOME_SCENE_STORAGE_KEY));
@@ -41,12 +41,14 @@ export function readHomeSceneSettings(storage) {
         state.crt.parameters[key] = step === 1 ? Math.round(clamped) : clamped;
       }
     }
-    // Apply changed homepage defaults once to existing v1 settings. Future
-    // debug edits carry the current version and remain authoritative.
-    if (saved?.version !== HOME_SCENE_SETTINGS_VERSION) {
+    const savedVersion = Number.isInteger(saved?.version) ? saved.version : 1;
+    // Apply each changed homepage default once. Later debug edits remain
+    // authoritative because saves carry the current settings version.
+    if (savedVersion < 2) {
       state.hatch.scale = 1.7;
       state.crt.parameters.brightness = 1;
     }
+    if (savedVersion < 3) state.crt.parameters.bloomIntensity = .25;
   } catch { /* Missing, corrupt, or unavailable storage uses project defaults. */ }
   return state;
 }
